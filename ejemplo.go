@@ -20,8 +20,52 @@ go run ejemplo1.go fichentrada.txt fichsalida.txt
 
 package main
 
-import ()
+import (
+	"fmt"
+	"net"
+)
+
+func handleConnection(conn net.Conn) {
+	// try to read data from the connection
+	data := make([]byte, 512)
+	n, err := conn.Read(data)
+
+	if err != nil {
+		panic(err)
+	}
+	s := string(data[:n])
+
+	// print the request data
+	fmt.Println(s)
+
+	// import "bytes"
+	var str = []string{"Hi there!"}
+	var buf bytes.Buffer
+	for _, s := range str {
+		buf.WriteString(s)
+	}
+	// write the data to the connection
+	_, err = conn.Write(buf.Bytes())
+
+	if err != nil {
+		panic(err)
+	}
+
+	// close the connection
+	conn.Close()
+}
 
 func main() {
+	ln, err := net.Listen("tcp", ":8081")
+	if err != nil {
+		// handle error
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			// handle error
+		}
+		go handleConnection(conn)
+	}
 
 }
