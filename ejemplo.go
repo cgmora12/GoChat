@@ -21,38 +21,83 @@ go run ejemplo1.go fichentrada.txt fichsalida.txt
 package main
 
 import (
+	//"bufio"
+	//"bytes"
 	"fmt"
+	//"github.com/R358/brace/latch"
+	//"log"
 	"net"
+	//"os"
+	"strconv"
+	"strings"
 )
 
+var messageCliente = ""
+var i = 0
+
 func handleConnection(conn net.Conn) {
-	// try to read data from the connection
-	data := make([]byte, 512)
-	n, err := conn.Read(data)
 
-	if err != nil {
-		panic(err)
+	i = i + 1
+	numCliente := i
+
+	for {
+		// try to read data from the connection
+		data := make([]byte, 512)
+		n, err := conn.Read(data)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if data != nil {
+
+			s := string(data[:n])
+
+			fmt.Print("-1")
+
+			fmt.Print("0")
+
+			// print the request data
+
+			fmt.Print("1")
+
+			// read in input from stdin
+			//reader := bufio.NewReader(os.Stdin)
+
+			fmt.Print("2")
+
+			if !strings.Contains(messageCliente, strconv.Itoa(numCliente)) && messageCliente != "" {
+				fmt.Print("if")
+				s = messageCliente
+
+				fmt.Print("Recibido: ")
+				fmt.Println(s)
+
+				// send to socket
+				fmt.Fprintf(conn, s+strconv.Itoa(numCliente)+"\n")
+			} else {
+				fmt.Print("else" + strconv.Itoa(numCliente))
+				messageCliente = s + strconv.Itoa(numCliente)
+				// send to socket
+				fmt.Fprintf(conn, "Sin mensajes\n")
+			}
+
+			fmt.Print("4")
+		}
 	}
-	s := string(data[:n])
 
-	// print the request data
-	fmt.Println(s)
-
-	// import "bytes"
-	var str = []string{"Hi there!"}
-	var buf bytes.Buffer
-	for _, s := range str {
-		buf.WriteString(s)
-	}
 	// write the data to the connection
-	_, err = conn.Write(buf.Bytes())
+	/*_, err = conn.Write(buf.Bytes())
 
 	if err != nil {
 		panic(err)
-	}
+	}*/
+
+	//c := latch.NewCountdownLatch(1)
+	//c.Await()
 
 	// close the connection
-	conn.Close()
+	//conn.Close()
 }
 
 func main() {
