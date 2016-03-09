@@ -1,23 +1,3 @@
-/*
-Ejemplo 1
-
-Este programa copia de la entrada a la salida carácter a carácter,
-restringiéndose a un alfabeto limitado y pasando a mayúsculas.
-Permite leer de la entrada y salida estándar o usar ficheros
-
-ejemplos de uso:
-
-go run ejemplo1.go
-
-go run ejemplo1.go fichentrada.txt fichsalida.txt
-
-
--lectura y escritura
--entrada y salida estándar
--ficheros
--parámetros en línea de comandos (os.Args)
-*/
-
 package main
 
 import (
@@ -32,6 +12,13 @@ import (
 	"strings"
 )
 
+// función para comprobar errores (ahorra escritura)
+func chk(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 var messageCliente = ""
 var i = 0
 
@@ -44,30 +31,20 @@ func handleConnection(conn net.Conn) {
 		// try to read data from the connection
 		data := make([]byte, 512)
 		n, err := conn.Read(data)
+		chk(err)
 
-		if err != nil {
-			panic(err)
-		}
-
+		fmt.Print("0")
 		if data != nil {
 
 			s := string(data[:n])
-
-			fmt.Print("-1")
-
-			fmt.Print("0")
-
-			// print the request data
 
 			fmt.Print("1")
 
 			// read in input from stdin
 			//reader := bufio.NewReader(os.Stdin)
 
-			fmt.Print("2")
-
 			if !strings.Contains(messageCliente, strconv.Itoa(numCliente)) && messageCliente != "" {
-				fmt.Print("if")
+				fmt.Print("2")
 				s = messageCliente
 
 				fmt.Print("Recibido: ")
@@ -76,7 +53,7 @@ func handleConnection(conn net.Conn) {
 				// send to socket
 				fmt.Fprintf(conn, s+strconv.Itoa(numCliente)+"\n")
 			} else {
-				fmt.Print("else" + strconv.Itoa(numCliente))
+				fmt.Print("3_" + strconv.Itoa(numCliente))
 				messageCliente = s + strconv.Itoa(numCliente)
 				// send to socket
 				fmt.Fprintf(conn, "Sin mensajes\n")
@@ -101,15 +78,16 @@ func handleConnection(conn net.Conn) {
 }
 
 func main() {
-	ln, err := net.Listen("tcp", ":8081")
-	if err != nil {
-		// handle error
-	}
+	ln, err := net.Listen("tcp", "localhost:1337")
+	chk(err)
+	defer ln.Close() // nos aseguramos que cerramos las conexiones aunque el programa falle
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			// handle error
 		}
+		fmt.Print("-1")
 		go handleConnection(conn)
 	}
 

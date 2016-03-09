@@ -8,7 +8,7 @@ import "os"
 func main() {
 
 	// connect to this socket
-	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+	conn, _ := net.Dial("tcp", "localhost:1337")
 	for {
 		fmt.Print("0")
 
