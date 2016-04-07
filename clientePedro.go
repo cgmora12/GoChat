@@ -29,7 +29,7 @@ func main() {
 func elegirOpcion() {
 	salir := false
 	for !salir {
-		fmt.Println("\n-- Cliente GoChat --")
+		fmt.Println("\n\n-- Cliente GoChat --")
 
 		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Login")
@@ -45,20 +45,21 @@ func elegirOpcion() {
 
 		switch opcionElegida {
 		case "1":
-			fmt.Println("- Login -")
+			fmt.Println("\n- Login -")
+			//login()
 
 		case "2":
 			registro()
 
 		case "3":
-			fmt.Println("- Entrar modo cliente -")
+			fmt.Println("\n- Entrar modo cliente -")
 			client()
 
 		case "4":
 			salir = true
 
 		default:
-			fmt.Println("Opción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
 		}
 	}
 }
@@ -82,7 +83,7 @@ func client() {
 }
 
 func registro() {
-	fmt.Println("- Registro -")
+	fmt.Println("\n- Registro -")
 
 	// Se obtienen los datos de registro
 	fmt.Print("Nombre de usuario: ")
@@ -107,4 +108,8 @@ func registro() {
 	var datos string = "Registro:" + nombreUsuario + ":" + password
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
+
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+	netscan.Scan()                    // Se escanea la conexión
+	fmt.Println(netscan.Text())       // Se muestra el mensaje desde el servidor
 }

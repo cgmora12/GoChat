@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-// función para comprobar errores (ahorra escritura)
+// Función para comprobar errores (ahorra escritura)
 func chk(e error) {
 	if e != nil {
 		panic(e)
@@ -32,46 +32,51 @@ func main() {
 	server()
 }
 
-// gestiona el modo servidor
+// Gestiona las conexiones al servidor
 func server() {
-	ln, err := net.Listen("tcp", "localhost:1337") // escucha en espera de conexión
+	ln, err := net.Listen("tcp", "localhost:1337") // Se escucha en espera de conexión
 	chk(err)
-	defer ln.Close() // nos aseguramos que cerramos las conexiones aunque el programa falle
+	defer ln.Close() // Se cierra la conexión al final
 
-	for { // búcle infinito, se sale con ctrl+c
-		conn, err := ln.Accept() // para cada nueva petición de conexión
+	for { // Bucle infinito, se sale con ctrl+c
+		conn, err := ln.Accept() // Para cada nueva petición de conexión
 		chk(err)
-		go func() { // lanzamos un cierre (lambda, función anónima) en concurrencia
+		go func() { // Función lambda (función anónima) en concurrencia
 
-			_, port, err := net.SplitHostPort(conn.RemoteAddr().String()) // obtenemos el puerto remoto para identificar al cliente (decorativo)
+			_, port, err := net.SplitHostPort(conn.RemoteAddr().String()) // Se obtiene el puerto remoto para identificar al cliente
 			chk(err)
 
 			fmt.Println("conexión: ", conn.LocalAddr(), " <--> ", conn.RemoteAddr())
 
-			scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
+			scanner := bufio.NewScanner(conn) // Con el scanner se trabaja con la entrada línea a línea (por defecto)
 
-			for scanner.Scan() { // escaneamos la conexión
+			for scanner.Scan() { // Se escanea la conexión
 				textoRecibido := scanner.Text()
 
-				fmt.Println("cliente[", port, "]: ", textoRecibido) // mostramos el mensaje del cliente
-				fmt.Fprintln(conn, "ack: ", textoRecibido)          // enviamos ack al cliente
+				fmt.Println("cliente[", port, "]: ", textoRecibido) // Se muestra el mensaje del cliente
 
-				// Se comprueba
-				if strings.Contains(textoRecibido, "Registro:") {
+				// Se comprueba si el mensaje recibido corresponde con algún método del servidor
+				if strings.HasPrefix(textoRecibido, "Registro:") {
 					fmt.Println(textoRecibido)
 					s := strings.Split(textoRecibido, ":")
 					nombreUsuario, password := s[1], s[2]
 					err := almacenarBD(nombreUsuario, password)
 
 					if err != nil {
-						fmt.Println("Ya existe el usuario ", nombreUsuario, " en la base de datos.")
+						respuestaServidor := "Ya existe el usuario " + nombreUsuario + " en la base de datos."
+						fmt.Println(respuestaServidor)
+						fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
 					} else {
-						fmt.Println("Usuario registrado: ", nombreUsuario, password)
+						respuestaServidor := "Usuario registrado: " + nombreUsuario + " Contraseña: " + password
+						fmt.Println(respuestaServidor)
+						fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
 					}
+				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
+					fmt.Fprintln(conn, "ack: ", textoRecibido) // Se envia el ack al cliente
 				}
 			}
 
-			conn.Close() // cerramos al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
+			conn.Close() // Se cierra la conexión al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
 			fmt.Println("cierre[", port, "]")
 		}()
 	}
