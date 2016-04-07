@@ -17,6 +17,7 @@ import (
 	"fmt"
 	_ "github.com/ziutek/mymysql/godrv"
 	"net"
+	"strings"
 )
 
 // función para comprobar errores (ahorra escritura)
@@ -27,7 +28,7 @@ func chk(e error) {
 }
 
 func main() {
-	fmt.Println("Entrando en modo servidor...")
+	fmt.Println("-- Servidor GoChat --")
 	server()
 }
 
@@ -46,13 +47,28 @@ func server() {
 			chk(err)
 
 			fmt.Println("conexión: ", conn.LocalAddr(), " <--> ", conn.RemoteAddr())
-			almacenarBD(port, "1234")
 
 			scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
 
 			for scanner.Scan() { // escaneamos la conexión
-				fmt.Println("cliente[", port, "]: ", scanner.Text()) // mostramos el mensaje del cliente
-				fmt.Fprintln(conn, "ack: ", scanner.Text())          // enviamos ack al cliente
+				textoRecibido := scanner.Text()
+
+				fmt.Println("cliente[", port, "]: ", textoRecibido) // mostramos el mensaje del cliente
+				fmt.Fprintln(conn, "ack: ", textoRecibido)          // enviamos ack al cliente
+
+				// Se comprueba
+				if strings.Contains(textoRecibido, "Registro:") {
+					fmt.Println(textoRecibido)
+					s := strings.Split(textoRecibido, ":")
+					nombreUsuario, password := s[1], s[2]
+					err := almacenarBD(nombreUsuario, password)
+
+					if err != nil {
+						fmt.Println("Ya existe el usuario ", nombreUsuario, " en la base de datos.")
+					} else {
+						fmt.Println("Usuario registrado: ", nombreUsuario, password)
+					}
+				}
 			}
 
 			conn.Close() // cerramos al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
@@ -61,7 +77,7 @@ func server() {
 	}
 }
 
-func almacenarBD(nombreUsuario string, password string) {
+func almacenarBD(nombreUsuario string, password string) error {
 	database := "gochat"
 	user := "usuarioGo"
 	passwordBD := "usuarioGo"
@@ -69,7 +85,7 @@ func almacenarBD(nombreUsuario string, password string) {
 	defer con.Close()
 
 	_, err = con.Exec("insert into usuarios(nombreUsuario, password) values (?, ?)", nombreUsuario, password)
-	chk(err)
 
-	fmt.Println("Almacenado ", nombreUsuario, " en la base de datos.")
+	//fmt.Println("Almacenado ", nombreUsuario, " en la base de datos.")
+	return err
 }
