@@ -149,5 +149,17 @@ func login() {
 
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 	netscan.Scan()                    // Se escanea la conexión
-	fmt.Println(netscan.Text())       // Se muestra el mensaje desde el servidor
+
+	textoRecibido := netscan.Text()
+	fmt.Println(textoRecibido) // Se muestra el mensaje desde el servidor
+
+	s := strings.Split(textoRecibido, ":")
+	respuesta := s[1]
+
+	if respuesta != "Error" {
+		// Para mantener abierta la conexión
+		for netscan.Scan() {
+
+		}
+	}
 }

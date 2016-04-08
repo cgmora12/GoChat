@@ -41,6 +41,11 @@ func main() {
 
 // Gestiona las conexiones al servidor
 func server() {
+	// Se crea el map para almacenar los usuarios logueados.
+	// Se utiliza un map porque se almacenará el port y el nombreUsuario
+	// map[nombreUsuario]port
+	usuariosLogueados := make(map[string]string)
+
 	ln, err := net.Listen("tcp", "localhost:1337") // Se escucha en espera de conexión
 	chk(err)
 	defer ln.Close() // Se cierra la conexión al final
@@ -67,7 +72,7 @@ func server() {
 					procesarRegistro(conn, textoRecibido)
 
 				} else if strings.HasPrefix(textoRecibido, "Login:") {
-					procesarLogin(conn, textoRecibido)
+					procesarLogin(conn, textoRecibido, usuariosLogueados, port)
 
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 					fmt.Fprintln(conn, "ack: ", textoRecibido) // Se envia el ack al cliente
@@ -76,6 +81,7 @@ func server() {
 
 			conn.Close() // Se cierra la conexión al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
 			fmt.Println("cierre[", port, "]")
+			procesarLogout(usuariosLogueados, port)
 		}()
 	}
 }
@@ -110,22 +116,29 @@ func registrarBD(nombreUsuario string, password string) error {
 	return err
 }
 
-func procesarLogin(conn net.Conn, textoRecibido string) {
+func procesarLogin(conn net.Conn, textoRecibido string, usuariosLogueados map[string]string, port string) {
 	fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
 	nombreUsuario, password := s[1], s[2]
 
-	loginBD(nombreUsuario, password)
-
-	count := loginBD(nombreUsuario, password)
-	if count == 1 {
-		respuestaServidor := "Usuario correcto."
+	if buscarUsuarioLogueado(nombreUsuario, usuariosLogueados) {
+		respuestaServidor := "Nombre de usuario y/o contraseña incorrectos o el usuario ya está logueado"
 		fmt.Println(respuestaServidor)
-		fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
+		fmt.Fprintln(conn, "Respuesta del servidor:Error: ", respuestaServidor)
 	} else {
-		respuestaServidor := "Nombre de usuario y/o contraseña incorrectos"
-		fmt.Println(respuestaServidor)
-		fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
+		loginBD(nombreUsuario, password)
+
+		count := loginBD(nombreUsuario, password)
+		if count == 1 {
+			respuestaServidor := "Usuario correcto."
+			fmt.Println(respuestaServidor)
+			fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
+			usuariosLogueados[nombreUsuario] = port
+		} else {
+			respuestaServidor := "Nombre de usuario y/o contraseña incorrectos o el usuario ya está logueado"
+			fmt.Println(respuestaServidor)
+			fmt.Fprintln(conn, "Respuesta del servidor:Error: ", respuestaServidor)
+		}
 	}
 }
 
@@ -147,4 +160,33 @@ func loginBD(nombreUsuario string, password string) int {
 	//fmt.Println(valor)
 
 	return valor
+}
+
+func buscarUsuarioLogueado(nombreUsuario string, usuariosLogueados map[string]string) bool {
+	_, ok := usuariosLogueados[nombreUsuario]
+	return ok
+}
+
+func procesarLogout(usuariosLogueados map[string]string, port string) {
+	/*
+		// Map antes del logout
+		fmt.Println("-- Map antes del logout --")
+		for key, value := range usuariosLogueados {
+			fmt.Println("Key:", key, "Value:", value)
+		}
+	*/
+	for key, value := range usuariosLogueados {
+		if value == port {
+			delete(usuariosLogueados, key)
+			fmt.Println("Logout ", key, " correcto")
+			break
+		}
+	}
+	/*
+		// Map después del logout
+		fmt.Println("-- Map después del logout --")
+		for key, value := range usuariosLogueados {
+			fmt.Println("Key:", key, "Value:", value)
+		}
+	*/
 }
