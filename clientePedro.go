@@ -45,8 +45,7 @@ func elegirOpcion() {
 
 		switch opcionElegida {
 		case "1":
-			fmt.Println("\n- Login -")
-			//login()
+			login()
 
 		case "2":
 			registro()
@@ -66,19 +65,26 @@ func elegirOpcion() {
 
 // gestiona el modo cliente
 func client() {
-	conn, err := net.Dial("tcp", "localhost:1337") // llamamos al servidor
+	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
 	chk(err)
-	defer conn.Close() // es importante cerrar la conexión al finalizar
+	defer conn.Close() // Se cierra la conexión al final
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
 	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
 	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
 
-	for keyscan.Scan() { // escaneamos la entrada
-		fmt.Fprintln(conn, keyscan.Text())         // enviamos la entrada al servidor
-		netscan.Scan()                             // escaneamos la conexión
-		fmt.Println("servidor: " + netscan.Text()) // mostramos mensaje desde el servidor
+	for keyscan.Scan() { // Se escanea la entrada
+		textoAEnviar := keyscan.Text()
+
+		// Se comprueba si el mensaje enviado corresponde con algún método del servidor
+		if strings.HasPrefix(textoAEnviar, "Registro:") || strings.HasPrefix(textoAEnviar, "Login:") {
+			fmt.Println("No se puede enviar un mensaje con esa estructura")
+		} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
+			fmt.Fprintln(conn, textoAEnviar)           // Se envia la entrada al servidor
+			netscan.Scan()                             // Se escanea la conexión
+			fmt.Println("servidor: " + netscan.Text()) // Se muestra el mensaje recibido desde el servidor
+		}
 	}
 }
 
@@ -106,6 +112,38 @@ func registro() {
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
 	var datos string = "Registro:" + nombreUsuario + ":" + password
+
+	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
+
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+	netscan.Scan()                    // Se escanea la conexión
+	fmt.Println(netscan.Text())       // Se muestra el mensaje desde el servidor
+}
+
+func login() {
+	fmt.Println("\n- Login -")
+
+	// Se obtienen los datos de registro
+	fmt.Print("Nombre de usuario: ")
+	reader := bufio.NewReader(os.Stdin)
+	nombreUsuario, err := reader.ReadString('\n')
+	chk(err)
+	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
+
+	fmt.Print("Contraseña: ")
+	reader = bufio.NewReader(os.Stdin)
+	password, err := reader.ReadString('\n')
+	chk(err)
+	password = strings.TrimRight(password, "\r\n")
+
+	// Se envian los datos al servidor
+	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
+	chk(err)
+	defer conn.Close() // Se cierra la conexión al finalizar
+
+	fmt.Println("conectado a ", conn.RemoteAddr())
+
+	var datos string = "Login:" + nombreUsuario + ":" + password
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
