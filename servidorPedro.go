@@ -45,6 +45,8 @@ func server() {
 	// Se utiliza un map porque se almacenará el port y el nombreUsuario
 	// map[nombreUsuario]port
 	usuariosLogueados := make(map[string]string)
+	// map[port]conn
+	connUsuariosLogueados := make(map[string]net.Conn)
 
 	ln, err := net.Listen("tcp", "localhost:1337") // Se escucha en espera de conexión
 	chk(err)
@@ -53,7 +55,7 @@ func server() {
 	for { // Bucle infinito, se sale con ctrl+c
 		conn, err := ln.Accept() // Para cada nueva petición de conexión
 		chk(err)
-		go func() { // Función lambda (función anónima) en concurrencia
+		go func() { // Función lambda (función anónima) en concurrencia. Con "go func()" se crea una goroutine para cada conexión.
 
 			_, port, err := net.SplitHostPort(conn.RemoteAddr().String()) // Se obtiene el puerto remoto para identificar al cliente
 			chk(err)
@@ -72,16 +74,18 @@ func server() {
 					procesarRegistro(conn, textoRecibido)
 
 				} else if strings.HasPrefix(textoRecibido, "Login:") {
-					procesarLogin(conn, textoRecibido, usuariosLogueados, port)
+					procesarLogin(conn, textoRecibido, port, usuariosLogueados, connUsuariosLogueados)
 
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
-					fmt.Fprintln(conn, "ack: ", textoRecibido) // Se envia el ack al cliente
+					//fmt.Fprintln(conn, "ack del servidor: ", textoRecibido) // Se envia el ack al cliente
+
+					enviarATodos(textoRecibido, port, usuariosLogueados, connUsuariosLogueados)
 				}
 			}
 
 			conn.Close() // Se cierra la conexión al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
+			procesarLogout(port, usuariosLogueados, connUsuariosLogueados)
 			fmt.Println("cierre[", port, "]")
-			procesarLogout(usuariosLogueados, port)
 		}()
 	}
 }
@@ -116,7 +120,7 @@ func registrarBD(nombreUsuario string, password string) error {
 	return err
 }
 
-func procesarLogin(conn net.Conn, textoRecibido string, usuariosLogueados map[string]string, port string) {
+func procesarLogin(conn net.Conn, textoRecibido string, port string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
 	fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
 	nombreUsuario, password := s[1], s[2]
@@ -134,6 +138,7 @@ func procesarLogin(conn net.Conn, textoRecibido string, usuariosLogueados map[st
 			fmt.Println(respuestaServidor)
 			fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
 			usuariosLogueados[nombreUsuario] = port
+			connUsuariosLogueados[port] = conn
 		} else {
 			respuestaServidor := "Nombre de usuario y/o contraseña incorrectos o el usuario ya está logueado"
 			fmt.Println(respuestaServidor)
@@ -167,7 +172,7 @@ func buscarUsuarioLogueado(nombreUsuario string, usuariosLogueados map[string]st
 	return ok
 }
 
-func procesarLogout(usuariosLogueados map[string]string, port string) {
+func procesarLogout(port string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
 	/*
 		// Map antes del logout
 		fmt.Println("-- Map antes del logout --")
@@ -178,7 +183,8 @@ func procesarLogout(usuariosLogueados map[string]string, port string) {
 	for key, value := range usuariosLogueados {
 		if value == port {
 			delete(usuariosLogueados, key)
-			fmt.Println("Logout ", key, " correcto")
+			delete(connUsuariosLogueados, port)
+			fmt.Println("Logout usuario", key, "correcto")
 			break
 		}
 	}
@@ -189,4 +195,27 @@ func procesarLogout(usuariosLogueados map[string]string, port string) {
 			fmt.Println("Key:", key, "Value:", value)
 		}
 	*/
+}
+
+func enviarATodos(textoRecibido string, portOrigen string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
+	for key, value := range usuariosLogueados {
+		if value != portOrigen { // Para no enviarlo al origen
+			usuarioOrigen := buscarUsuarioOrigen(portOrigen, usuariosLogueados)
+			textoAEnviar := "\t" + usuarioOrigen + ": " + textoRecibido
+			fmt.Fprintln(connUsuariosLogueados[value], textoAEnviar) // Se envia la entrada al cliente
+			fmt.Println("Enviado '", textoRecibido, "' al usuario", key, "mediante el puerto", value)
+		}
+	}
+}
+
+func buscarUsuarioOrigen(portOrigen string, usuariosLogueados map[string]string) string {
+	var usuarioOrigen string
+
+	for key, value := range usuariosLogueados {
+		if value == portOrigen {
+			usuarioOrigen = key
+		}
+	}
+
+	return usuarioOrigen
 }

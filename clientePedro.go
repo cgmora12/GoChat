@@ -23,10 +23,10 @@ func chk(e error) {
 }
 
 func main() {
-	elegirOpcion()
+	elegirOpcionMain()
 }
 
-func elegirOpcion() {
+func elegirOpcionMain() {
 	salir := false
 	for !salir {
 		fmt.Println("\n\n-- Cliente GoChat --")
@@ -154,12 +154,84 @@ func login() {
 	fmt.Println(textoRecibido) // Se muestra el mensaje desde el servidor
 
 	s := strings.Split(textoRecibido, ":")
-	respuesta := s[1]
+	substringRespuesta := s[1]
 
-	if respuesta != "Error" {
-		// Para mantener abierta la conexión
-		for netscan.Scan() {
+	if substringRespuesta != "Error" {
+		elegirOpcionChat(nombreUsuario, conn)
+	}
+}
 
+func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
+	salir := false
+	for !salir {
+		fmt.Println("\n\n-- GoChat --")
+		fmt.Println("-- Usuario:", nombreUsuario, "--")
+
+		fmt.Println("Eliga una opción: ")
+		fmt.Println("1.- Sala pública")
+		fmt.Println("2.- Logout")
+		fmt.Print("Opción elegida (introduzca el número): ")
+
+		reader := bufio.NewReader(os.Stdin)
+		opcionElegida, err := reader.ReadString('\n')
+		chk(err)
+		opcionElegida = strings.TrimRight(opcionElegida, "\r\n")
+
+		switch opcionElegida {
+		case "1":
+			salaPublica(conn)
+
+		case "2":
+			salir = true
+
+		default:
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1 o 2)")
 		}
 	}
+}
+
+func salaPublica(conn net.Conn) {
+
+	// Se crean dos canales (channels)
+	done1 := make(chan bool)
+	done2 := make(chan bool)
+
+	// Goroutine para leer los mensajes
+	go func() {
+		netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+		// Para mantener abierta la conexión
+		for netscan.Scan() {
+			textoRecibido := netscan.Text()
+			fmt.Println(textoRecibido)
+			fmt.Print("Escriba su mensaje: ")
+		}
+		// Para indicar a la función que la goroutine ya ha acabado.
+		done1 <- true
+	}()
+
+	// Goroutine para escribir los mensajes
+	go func() {
+		fmt.Println("conectado a ", conn.RemoteAddr())
+
+		keyscan := bufio.NewScanner(os.Stdin) // Se crea un scanner para la entrada estándar (teclado)
+
+		fmt.Print("Escriba su mensaje: ")
+		for keyscan.Scan() { // Se escanea la entrada
+			fmt.Print("Escriba su mensaje: ")
+			textoAEnviar := keyscan.Text()
+
+			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
+			if strings.HasPrefix(textoAEnviar, "Registro:") || strings.HasPrefix(textoAEnviar, "Login:") {
+				fmt.Println("No se puede enviar un mensaje con esa estructura")
+			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
+				fmt.Fprintln(conn, textoAEnviar) // Se envia la entrada al servidor
+			}
+		}
+		// Para indicar a la función que la goroutine ya ha acabado.
+		done2 <- true
+	}()
+
+	// Para que se espere a que las goroutines acaben.
+	<-done1
+	<-done2
 }
