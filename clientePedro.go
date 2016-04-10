@@ -195,15 +195,28 @@ func salaPublica(conn net.Conn) {
 	// Se crean dos canales (channels)
 	done1 := make(chan bool)
 	done2 := make(chan bool)
+	quit := make(chan bool)
+
+	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 
 	// Goroutine para leer los mensajes
 	go func() {
-		netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 		// Para mantener abierta la conexión
 		for netscan.Scan() {
-			textoRecibido := netscan.Text()
-			fmt.Println(textoRecibido)
-			fmt.Print("Escriba su mensaje: ")
+			select {
+			case _, ok := <-quit:
+				if ok {
+					done1 <- true
+					return
+				} else {
+					fmt.Println("Error: Canal 'quit' cerrado")
+				}
+			default:
+				textoRecibido := netscan.Text()
+				fmt.Println(textoRecibido)
+				fmt.Print("Escriba su mensaje: ")
+			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.
 		done1 <- true
@@ -222,7 +235,13 @@ func salaPublica(conn net.Conn) {
 
 			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
 			if strings.HasPrefix(textoAEnviar, "Registro:") || strings.HasPrefix(textoAEnviar, "Login:") {
-				fmt.Println("No se puede enviar un mensaje con esa estructura")
+				fmt.Println("Error: No se puede enviar un mensaje con esa estructura")
+				fmt.Print("Escriba su mensaje: ")
+			} else if textoAEnviar == "Salir" {
+				fmt.Fprintln(conn, "SalirChat:")
+				quit <- true
+				done2 <- true
+				return
 			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 				fmt.Fprintln(conn, textoAEnviar) // Se envia la entrada al servidor
 			}
@@ -234,4 +253,5 @@ func salaPublica(conn net.Conn) {
 	// Para que se espere a que las goroutines acaben.
 	<-done1
 	<-done2
+	close(quit)
 }

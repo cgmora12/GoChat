@@ -76,6 +76,11 @@ func server() {
 				} else if strings.HasPrefix(textoRecibido, "Login:") {
 					procesarLogin(conn, textoRecibido, port, usuariosLogueados, connUsuariosLogueados)
 
+				} else if strings.HasPrefix(textoRecibido, "SalirChat:") {
+					// Se envia algo para que el scanner del cliente pueda reaccionar
+					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
+					fmt.Fprintln(conn, "")
+
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 					//fmt.Fprintln(conn, "ack del servidor: ", textoRecibido) // Se envia el ack al cliente
 
