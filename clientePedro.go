@@ -10,6 +10,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/howeyc/gopass"
 	"net"
 	"os"
 	"strings"
@@ -99,10 +100,12 @@ func registro() {
 	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
 
 	fmt.Print("Contraseña: ")
-	reader = bufio.NewReader(os.Stdin)
-	password, err := reader.ReadString('\n')
+	//reader = bufio.NewReader(os.Stdin)
+	//password, err := reader.ReadString('\n')
+	//chk(err)
+	//password = strings.TrimRight(password, "\r\n")
+	pass, err := gopass.GetPasswdMasked()
 	chk(err)
-	password = strings.TrimRight(password, "\r\n")
 
 	// Se envian los datos al servidor
 	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
@@ -111,7 +114,7 @@ func registro() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Registro:" + nombreUsuario + ":" + password
+	var datos string = "Registro:" + nombreUsuario + ":" + string(pass[:])
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -131,10 +134,12 @@ func login() {
 	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
 
 	fmt.Print("Contraseña: ")
-	reader = bufio.NewReader(os.Stdin)
-	password, err := reader.ReadString('\n')
+	//reader = bufio.NewReader(os.Stdin)
+	//password, err := reader.ReadString('\n')
+	//chk(err)
+	//password = strings.TrimRight(password, "\r\n")
+	pass, err := gopass.GetPasswdMasked()
 	chk(err)
-	password = strings.TrimRight(password, "\r\n")
 
 	// Se envian los datos al servidor
 	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
@@ -143,7 +148,7 @@ func login() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Login:" + nombreUsuario + ":" + password
+	var datos string = "Login:" + nombreUsuario + ":" + string(pass[:])
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -214,8 +219,8 @@ func salaPublica(conn net.Conn) {
 				}
 			default:
 				textoRecibido := netscan.Text()
-				fmt.Println(textoRecibido)
-				fmt.Print("Escriba su mensaje: ")
+				fmt.Println("\n" + textoRecibido)
+				fmt.Print("Continúe su mensaje: ")
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.
