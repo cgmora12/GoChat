@@ -1,14 +1,25 @@
 package main
 
-import "net"
-import "fmt"
-import "bufio"
-import "os"
+import (
+	"bufio"
+	"fmt"
+	"net"
+	"os"
+)
+
+// función para comprobar errores (ahorra escritura)
+func chk(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
 
 func main() {
 
 	// connect to this socket
-	conn, _ := net.Dial("tcp", "localhost:1337")
+	conn, err := net.Dial("tcp", "localhost:1337")
+	chk(err)
+	defer conn.Close() // nos aseguramos que cerramos las conexiones aunque el programa falle
 	for {
 		fmt.Print("0")
 

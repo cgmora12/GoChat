@@ -33,33 +33,37 @@ func handleConnection(conn net.Conn) {
 		n, err := conn.Read(data)
 		chk(err)
 
-		fmt.Print("0")
+		fmt.Println("Cliente: " + strconv.Itoa(numCliente))
 		if data != nil {
 
 			s := string(data[:n])
 
-			fmt.Print("1")
+			fmt.Println("Datos de la conexion: " + s)
 
 			// read in input from stdin
 			//reader := bufio.NewReader(os.Stdin)
-
+			fmt.Println("Mensaje cliente " + messageCliente)
 			if !strings.Contains(messageCliente, strconv.Itoa(numCliente)) && messageCliente != "" {
-				fmt.Print("2")
+				fmt.Println("Cliente num" + strconv.Itoa(numCliente))
+
+				// send data
+				fmt.Println("Mensaje enviado: " + s + " al otro cliente " + strconv.Itoa(numCliente))
+				fmt.Fprintf(conn, s+strconv.Itoa(numCliente)+"\n")
+
 				s = messageCliente
 
-				fmt.Print("Recibido: ")
-				fmt.Println(s)
+				// send previous
+				fmt.Println("Mensaje enviado: " + s + " al cliente " + strconv.Itoa(numCliente))
+				fmt.Fprintf(conn, s+"\n")
 
-				// send to socket
-				fmt.Fprintf(conn, s+strconv.Itoa(numCliente)+"\n")
 			} else {
-				fmt.Print("3_" + strconv.Itoa(numCliente))
+				fmt.Println("Sin mensajes " + strconv.Itoa(numCliente))
 				messageCliente = s + strconv.Itoa(numCliente)
 				// send to socket
 				fmt.Fprintf(conn, "Sin mensajes\n")
 			}
 
-			fmt.Print("4")
+			fmt.Println("Fin bucle cliente " + strconv.Itoa(numCliente))
 		}
 	}
 
@@ -87,7 +91,7 @@ func main() {
 		if err != nil {
 			// handle error
 		}
-		fmt.Print("-1")
+		fmt.Println("Conexion con cliente")
 		go handleConnection(conn)
 	}
 
