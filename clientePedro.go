@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -34,8 +35,8 @@ func elegirOpcionMain() {
 		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Login")
 		fmt.Println("2.- Registro")
-		fmt.Println("3.- Entrar modo cliente")
-		fmt.Println("4.- Salir")
+		//fmt.Println("3.- Entrar modo cliente")
+		fmt.Println("3.- Salir")
 		fmt.Print("Opción elegida (introduzca el número): ")
 
 		reader := bufio.NewReader(os.Stdin)
@@ -49,21 +50,21 @@ func elegirOpcionMain() {
 
 		case "2":
 			registro()
-
+			/*
+				case "3":
+					fmt.Println("\n- Entrar modo cliente -")
+					client()
+			*/
 		case "3":
-			fmt.Println("\n- Entrar modo cliente -")
-			client()
-
-		case "4":
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2 o 3)")
 		}
 	}
 }
 
-// gestiona el modo cliente
+/*
 func client() {
 	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
 	chk(err)
@@ -87,6 +88,7 @@ func client() {
 		}
 	}
 }
+*/
 
 func registro() {
 	fmt.Println("\n- Registro -")
@@ -169,7 +171,8 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 
 		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Sala pública")
-		fmt.Println("2.- Logout")
+		fmt.Println("2.- Salas privadas")
+		fmt.Println("3.- Logout")
 		fmt.Print("Opción elegida (introduzca el número): ")
 
 		reader := bufio.NewReader(os.Stdin)
@@ -179,24 +182,29 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 
 		switch opcionElegida {
 		case "1":
-			salaPublica(conn)
+			salaPublica(conn, nombreUsuario)
 
 		case "2":
+			salasPrivadas(conn, nombreUsuario)
+
+		case "3":
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1 o 2)")
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2 o 3)")
 		}
 	}
 }
 
-func salaPublica(conn net.Conn) {
+func salaPublica(conn net.Conn, nombreUsuario string) {
 
 	// Se crean dos canales (channels)
 	done1 := make(chan bool)
 	done2 := make(chan bool)
 	quit := make(chan bool)
 
+	fmt.Println("\n\n-- Sala pública --")
+	fmt.Println("-- Usuario:", nombreUsuario, "--")
 	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 
@@ -234,8 +242,8 @@ func salaPublica(conn net.Conn) {
 			textoAEnviar := keyscan.Text()
 
 			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
-			if strings.HasPrefix(textoAEnviar, "Registro:") || strings.HasPrefix(textoAEnviar, "Login:") {
-				fmt.Println("Error: No se puede enviar un mensaje con esa estructura")
+			if strings.Contains(textoAEnviar, ":") {
+				fmt.Println("Error: Carácter ':' inválido")
 				fmt.Print("Escriba su mensaje: ")
 			} else if textoAEnviar == "Salir" {
 				fmt.Fprintln(conn, "SalirChat:")
@@ -244,6 +252,147 @@ func salaPublica(conn net.Conn) {
 				return
 			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 				fmt.Fprintln(conn, textoAEnviar) // Se envia la entrada al servidor
+			}
+		}
+		// Para indicar a la función que la goroutine ya ha acabado.
+		done2 <- true
+	}()
+
+	// Para que se espere a que las goroutines acaben.
+	<-done1
+	<-done2
+	close(quit)
+}
+
+func salasPrivadas(conn net.Conn, nombreUsuario string) {
+
+	// Primero se envia un mensaje al servidor para obtener los usuarios logueados actualmente.
+	fmt.Fprintln(conn, "GetLogueados:")
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+	textoRecibido := ""
+
+	for netscan.Scan() {
+		textoRecibido = netscan.Text()
+		//fmt.Println(textoRecibido)
+
+		if strings.HasPrefix(textoRecibido, "GetLogueados:") {
+			break
+		}
+	}
+
+	usuariosLogueados := strings.Split(textoRecibido, ":")
+	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
+	numUsuarios := len(usuariosLogueados) - 2
+
+	// El siguiente paso es elegir el usuario con quien se quiere hablar.
+	salir := false
+	for !salir {
+		fmt.Println("\n\n-- Salas privadas --")
+		fmt.Println("-- Usuario:", nombreUsuario, "--")
+
+		fmt.Println("Eliga el usuario con quien quiera hablar:\n")
+
+		i := 1
+		if numUsuarios == 0 {
+			fmt.Println("No hay ningún usuario más logueado.")
+
+		} else {
+			for ; i <= numUsuarios; i++ {
+				// usuariosLogueados[i] porque me hay que saltarse la posición 0 ("GetLogueados:")
+				fmt.Println("Usuario ", i, ".- ", usuariosLogueados[i])
+			}
+		}
+		fmt.Println(i, ".- Salir de las salas privadas")
+		fmt.Print("Opción elegida (introduzca el número): ")
+
+		reader := bufio.NewReader(os.Stdin)
+		opcionElegida, err := reader.ReadString('\n')
+		chk(err)
+		opcionElegida = strings.TrimRight(opcionElegida, "\r\n")
+
+		opcionElegidaInt, err := strconv.Atoi(opcionElegida)
+		if err != nil {
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida")
+
+		} else if opcionElegidaInt > 0 && opcionElegidaInt <= numUsuarios {
+			usuarioElegido := usuariosLogueados[opcionElegidaInt]
+			//fmt.Println("Elegido: ", opcionElegidaInt, ".-", usuarioElegido)
+			entrarSalaPrivada(conn, nombreUsuario, usuarioElegido)
+
+			// Al salir de la sala privada no se vuelven a pedir los usuarios logueados.
+			// Por lo que, si mientras se está en una sala privada se conecta otro usuario,
+			// sólo con salir de la sala privada actual no se mostrará dicho usuario.
+			// Así que, al salir de una sala privada, se sale al menú de usuario (no al menú de las salas privadas).
+			salir = true
+
+		} else if opcionElegidaInt == i {
+			// Es la opción para salir de las salas privadas
+			salir = true
+
+		} else {
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida")
+		}
+	}
+}
+
+func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string) {
+
+	// Se crean dos canales (channels)
+	done1 := make(chan bool)
+	done2 := make(chan bool)
+	quit := make(chan bool)
+
+	fmt.Println("\n\n-- Sala privada con", usuarioElegido, "--")
+	fmt.Println("-- Usuario:", esteUsuario, "--")
+	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
+
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+
+	// Goroutine para leer los mensajes
+	go func() {
+		// Para mantener abierta la conexión
+		for netscan.Scan() {
+			select {
+			case _, ok := <-quit:
+				if ok {
+					done1 <- true
+					return
+				} else {
+					fmt.Println("Error: Canal 'quit' cerrado")
+				}
+			default:
+				textoRecibido := netscan.Text()
+				fmt.Println(textoRecibido)
+				fmt.Print("Escriba su mensaje: ")
+			}
+		}
+		// Para indicar a la función que la goroutine ya ha acabado.
+		done1 <- true
+	}()
+
+	// Goroutine para escribir los mensajes
+	go func() {
+		fmt.Println("conectado a ", conn.RemoteAddr())
+
+		keyscan := bufio.NewScanner(os.Stdin) // Se crea un scanner para la entrada estándar (teclado)
+
+		fmt.Print("Escriba su mensaje: ")
+		for keyscan.Scan() { // Se escanea la entrada
+			fmt.Print("Escriba su mensaje: ")
+			textoAEnviar := keyscan.Text()
+
+			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
+			if strings.Contains(textoAEnviar, ":") {
+				fmt.Println("Error: Carácter ':' inválido")
+				fmt.Print("Escriba su mensaje: ")
+			} else if textoAEnviar == "Salir" {
+				fmt.Fprintln(conn, "SalirChat:")
+				quit <- true
+				done2 <- true
+				return
+			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
+				textoPreparado := "SalaPrivada:" + esteUsuario + ":" + usuarioElegido + ":" + textoAEnviar
+				fmt.Fprintln(conn, textoPreparado) // Se envia la entrada al servidor
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.

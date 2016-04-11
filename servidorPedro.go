@@ -81,6 +81,20 @@ func server() {
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
 					fmt.Fprintln(conn, "")
 
+				} else if strings.HasPrefix(textoRecibido, "GetLogueados:") {
+					// Se envia algo para que el scanner del cliente pueda reaccionar
+					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
+					var textoAEnviar string = "GetLogueados:"
+					for key, value := range usuariosLogueados {
+						if value != port {
+							textoAEnviar += (key + ":")
+						}
+					}
+					fmt.Fprintln(conn, textoAEnviar)
+
+				} else if strings.HasPrefix(textoRecibido, "SalaPrivada:") {
+					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
+
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 					//fmt.Fprintln(conn, "ack del servidor: ", textoRecibido) // Se envia el ack al cliente
 
@@ -96,7 +110,7 @@ func server() {
 }
 
 func procesarRegistro(conn net.Conn, textoRecibido string) {
-	fmt.Println(textoRecibido)
+	//fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
 	nombreUsuario, password := s[1], s[2]
 	err := registrarBD(nombreUsuario, password)
@@ -126,7 +140,7 @@ func registrarBD(nombreUsuario string, password string) error {
 }
 
 func procesarLogin(conn net.Conn, textoRecibido string, port string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
-	fmt.Println(textoRecibido)
+	//fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
 	nombreUsuario, password := s[1], s[2]
 
@@ -206,7 +220,7 @@ func enviarATodos(textoRecibido string, portOrigen string, usuariosLogueados map
 	for key, value := range usuariosLogueados {
 		if value != portOrigen { // Para no enviarlo al origen
 			usuarioOrigen := buscarUsuarioOrigen(portOrigen, usuariosLogueados)
-			textoAEnviar := "\t" + usuarioOrigen + ": " + textoRecibido
+			textoAEnviar := "\t Sala pública: \n\t\t" + usuarioOrigen + ": " + textoRecibido
 			fmt.Fprintln(connUsuariosLogueados[value], textoAEnviar) // Se envia la entrada al cliente
 			fmt.Println("Enviado '", textoRecibido, "' al usuario", key, "mediante el puerto", value)
 		}
@@ -223,4 +237,26 @@ func buscarUsuarioOrigen(portOrigen string, usuariosLogueados map[string]string)
 	}
 
 	return usuarioOrigen
+}
+
+func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
+	s := strings.Split(textoRecibido, ":")
+	usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
+
+	portOrigen := usuariosLogueados[usuarioOrigen]
+	connOrigen := connUsuariosLogueados[portOrigen]
+
+	portDestino := usuariosLogueados[usuarioDestino]
+	connDestino := connUsuariosLogueados[portDestino]
+
+	if portDestino == "" {
+		envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+		fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+		fmt.Println("Enviado '", envioOrigen, "' al usuario", usuarioOrigen, "mediante el puerto", portOrigen)
+
+	} else {
+		envioDestino := "\tSala privada: \n\t\t " + usuarioOrigen + ": " + mensajeAEnviar
+		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+		fmt.Println("Enviado '", envioDestino, "' al usuario", usuarioDestino, "mediante el puerto", portDestino)
+	}
 }
