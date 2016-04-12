@@ -95,6 +95,9 @@ func server() {
 				} else if strings.HasPrefix(textoRecibido, "SalaPrivada:") {
 					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
 
+				} else if strings.HasPrefix(textoRecibido, "VerPerfiles:") {
+					devolverPerfiles(conn)
+
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 					//fmt.Fprintln(conn, "ack del servidor: ", textoRecibido) // Se envia el ack al cliente
 
@@ -259,4 +262,40 @@ func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, 
 		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
 		fmt.Println("Enviado '", envioDestino, "' al usuario", usuarioDestino, "mediante el puerto", portDestino)
 	}
+}
+
+func devolverPerfiles(conn net.Conn) {
+	database := "gochat"
+	user := "usuarioGo"
+	passwordBD := "usuarioGo"
+
+	db := mysql.New("tcp", "", "127.0.0.1:3306", user, passwordBD, database)
+	err := db.Connect()
+	chk(err)
+
+	rows, res, err := db.Query("SELECT * FROM usuarios")
+	chk(err)
+
+	// Obtener valores por el nombre de la columna devuelta.
+	nombreUsuario := res.Map("nombreUsuario")
+	nombreCompleto := res.Map("nombreCompleto")
+	pais := res.Map("pais")
+	provincia := res.Map("provincia")
+	localidad := res.Map("localidad")
+	email := res.Map("email")
+	tamano := len(rows)
+	textoAEnviar := "VerPerfiles:"
+
+	for i := 0; i < tamano; i++ {
+		valorNombreUsuario := rows[i].Str(nombreUsuario)
+		valorNombreCompleto := rows[i].Str(nombreCompleto)
+		valorPais := rows[i].Str(pais)
+		valorProvincia := rows[i].Str(provincia)
+		valorLocalidad := rows[i].Str(localidad)
+		valorEmail := rows[i].Str(email)
+
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + ":"
+	}
+	//fmt.Println(textoAEnviar)
+	fmt.Fprintln(conn, textoAEnviar)
 }

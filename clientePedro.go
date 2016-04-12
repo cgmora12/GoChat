@@ -202,7 +202,8 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Sala pública")
 		fmt.Println("2.- Salas privadas")
-		fmt.Println("3.- Logout")
+		fmt.Println("3.- Ver perfiles de usuarios")
+		fmt.Println("4.- Logout")
 		fmt.Print("Opción elegida (introduzca el número): ")
 
 		reader := bufio.NewReader(os.Stdin)
@@ -218,10 +219,13 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 			salasPrivadas(conn, nombreUsuario)
 
 		case "3":
+			verPerfiles(conn, nombreUsuario)
+
+		case "4":
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2 o 3)")
+			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
 		}
 	}
 }
@@ -433,4 +437,43 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	<-done1
 	<-done2
 	close(quit)
+}
+
+func verPerfiles(conn net.Conn, nombreUsuario string) {
+
+	// Primero se envia un mensaje al servidor para obtener los usuarios registrados actualmente.
+	fmt.Fprintln(conn, "VerPerfiles:")
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+	textoRecibido := ""
+
+	for netscan.Scan() {
+		textoRecibido = netscan.Text()
+		//fmt.Println(textoRecibido)
+
+		if strings.HasPrefix(textoRecibido, "VerPerfiles:") {
+			break
+		}
+	}
+
+	usuarios := strings.Split(textoRecibido, ":")
+	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
+	numUsuarios := len(usuarios) - 2
+
+	// El siguiente paso es elegir el usuario con quien se quiere hablar.
+	fmt.Println("\n\n-- Perfiles de usuarios --")
+	fmt.Println("-- Usuario:", nombreUsuario, "--")
+
+	fmt.Println("Usuarios:")
+
+	i := 1
+	if numUsuarios == 0 {
+		fmt.Println("No hay ningún usuario registrado.")
+
+	} else {
+		for ; i <= numUsuarios; i++ {
+			// usuarios[i] porque me hay que saltarse la posición 0 ("GetLogueados:")
+			textoAMostrar := strings.Replace(usuarios[i], "-", "\n", -1) // -1 significa que no hay límite de coincidencias para reemplazar.
+			fmt.Println("\nUsuario ", i, ".-\n", textoAMostrar)
+		}
+	}
 }
