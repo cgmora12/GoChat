@@ -112,8 +112,8 @@ func server() {
 func procesarRegistro(conn net.Conn, textoRecibido string) {
 	//fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
-	nombreUsuario, password := s[1], s[2]
-	err := registrarBD(nombreUsuario, password)
+	nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email := s[1], s[2], s[3], s[4], s[5], s[6], s[7]
+	err := registrarBD(nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email)
 
 	if err != nil {
 		respuestaServidor := "Ya existe el usuario " + nombreUsuario + " en la base de datos."
@@ -126,14 +126,14 @@ func procesarRegistro(conn net.Conn, textoRecibido string) {
 	}
 }
 
-func registrarBD(nombreUsuario string, password string) error {
+func registrarBD(nombreUsuario string, password string, nombreCompleto string, pais string, provincia string, localidad string, email string) error {
 	database := "gochat"
 	user := "usuarioGo"
 	passwordBD := "usuarioGo"
 	con, err := sql.Open("mymysql", database+"/"+user+"/"+passwordBD)
 	defer con.Close()
 
-	_, err = con.Exec("insert into usuarios(nombreUsuario, password) values (?, ?)", nombreUsuario, password)
+	_, err = con.Exec("insert into usuarios(nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email) values (?, ?, ?, ?, ?, ?, ?)", nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email)
 
 	//fmt.Println("Almacenado ", nombreUsuario, " en la base de datos.")
 	return err

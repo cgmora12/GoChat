@@ -106,6 +106,36 @@ func registro() {
 	chk(err)
 	password = strings.TrimRight(password, "\r\n")
 
+	fmt.Print("Nombre completo: ")
+	reader = bufio.NewReader(os.Stdin)
+	nombreCompleto, err := reader.ReadString('\n')
+	chk(err)
+	nombreCompleto = strings.TrimRight(nombreCompleto, "\r\n")
+
+	fmt.Print("País: ")
+	reader = bufio.NewReader(os.Stdin)
+	pais, err := reader.ReadString('\n')
+	chk(err)
+	pais = strings.TrimRight(pais, "\r\n")
+
+	fmt.Print("Província: ")
+	reader = bufio.NewReader(os.Stdin)
+	provincia, err := reader.ReadString('\n')
+	chk(err)
+	provincia = strings.TrimRight(provincia, "\r\n")
+
+	fmt.Print("Localidad: ")
+	reader = bufio.NewReader(os.Stdin)
+	localidad, err := reader.ReadString('\n')
+	chk(err)
+	localidad = strings.TrimRight(localidad, "\r\n")
+
+	fmt.Print("Email: ")
+	reader = bufio.NewReader(os.Stdin)
+	email, err := reader.ReadString('\n')
+	chk(err)
+	email = strings.TrimRight(email, "\r\n")
+
 	// Se envian los datos al servidor
 	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
 	chk(err)
@@ -113,7 +143,7 @@ func registro() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Registro:" + nombreUsuario + ":" + password
+	var datos string = "Registro:" + nombreUsuario + ":" + password + ":" + nombreCompleto + ":" + pais + ":" + provincia + ":" + localidad + ":" + email
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
