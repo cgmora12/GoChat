@@ -23,6 +23,8 @@ import (
 	"github.com/ziutek/mymysql/mysql"
 	_ "github.com/ziutek/mymysql/native" // Native engine
 	// _ "github.com/ziutek/mymysql/thrsafe" // Thread safe engine
+	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"net"
 	"strings"
 )
@@ -116,14 +118,20 @@ func procesarRegistro(conn net.Conn, textoRecibido string) {
 	//fmt.Println(textoRecibido)
 	s := strings.Split(textoRecibido, ":")
 	nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email := s[1], s[2], s[3], s[4], s[5], s[6], s[7]
-	err := registrarBD(nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email)
+	hashedPassword, errorHash := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	chk(errorHash)
+
+	// Comparing the password with the hash
+	comprobacion := bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
+	fmt.Println(comprobacion) // nil means it is a match
+	err := registrarBD(nombreUsuario, string(hashedPassword), nombreCompleto, pais, provincia, localidad, email)
 
 	if err != nil {
 		respuestaServidor := "Ya existe el usuario " + nombreUsuario + " en la base de datos."
 		fmt.Println(respuestaServidor)
 		fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
 	} else {
-		respuestaServidor := "Usuario registrado: " + nombreUsuario + " Contraseña: " + password
+		respuestaServidor := "Usuario registrado: " + nombreUsuario + " Contraseña: " + string(hashedPassword)
 		fmt.Println(respuestaServidor)
 		fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
 	}
@@ -152,10 +160,9 @@ func procesarLogin(conn net.Conn, textoRecibido string, port string, usuariosLog
 		fmt.Println(respuestaServidor)
 		fmt.Fprintln(conn, "Respuesta del servidor:Error: ", respuestaServidor)
 	} else {
-		loginBD(nombreUsuario, password)
+		comprobacion := loginBD(nombreUsuario, password)
 
-		count := loginBD(nombreUsuario, password)
-		if count == 1 {
+		if comprobacion == nil {
 			respuestaServidor := "Usuario correcto."
 			fmt.Println(respuestaServidor)
 			fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
@@ -169,24 +176,29 @@ func procesarLogin(conn net.Conn, textoRecibido string, port string, usuariosLog
 	}
 }
 
-func loginBD(nombreUsuario string, password string) int {
+func loginBD(nombreUsuario string, password string) error {
 	database := "gochat"
 	user := "usuarioGo"
 	passwordBD := "usuarioGo"
+	comprobacion := errors.New("")
 
 	db := mysql.New("tcp", "", "127.0.0.1:3306", user, passwordBD, database)
 	err := db.Connect()
 	chk(err)
 
-	rows, res, err := db.Query("SELECT count(*) FROM usuarios WHERE nombreUsuario = '%s' AND password = '%s'", nombreUsuario, password)
+	rows, res, err := db.Query("SELECT password FROM usuarios WHERE nombreUsuario = '%s'", nombreUsuario)
 	chk(err)
 
 	// Obtener valores por el nombre de la columna devuelta.
-	columna := res.Map("count(*)")
-	valor := rows[0].Int(columna)
-	//fmt.Println(valor)
 
-	return valor
+	passwordBd := res.Map("password")
+
+	if rows != nil {
+		valor := rows[0].Str(passwordBd)
+		comprobacion = bcrypt.CompareHashAndPassword([]byte(valor), []byte(password))
+	}
+
+	return comprobacion
 }
 
 func buscarUsuarioLogueado(nombreUsuario string, usuariosLogueados map[string]string) bool {

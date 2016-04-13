@@ -10,6 +10,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/howeyc/gopass"
 	"net"
 	"os"
 	"strconv"
@@ -101,10 +102,12 @@ func registro() {
 	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
 
 	fmt.Print("Contraseña: ")
-	reader = bufio.NewReader(os.Stdin)
-	password, err := reader.ReadString('\n')
+	//reader = bufio.NewReader(os.Stdin)
+	//password, err := reader.ReadString('\n')
+	//chk(err)
+	//password = strings.TrimRight(password, "\r\n")
+	pass, err := gopass.GetPasswdMasked()
 	chk(err)
-	password = strings.TrimRight(password, "\r\n")
 
 	fmt.Print("Nombre completo: ")
 	reader = bufio.NewReader(os.Stdin)
@@ -143,7 +146,7 @@ func registro() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Registro:" + nombreUsuario + ":" + password + ":" + nombreCompleto + ":" + pais + ":" + provincia + ":" + localidad + ":" + email
+	var datos string = "Registro:" + nombreUsuario + ":" + string(pass[:]) + ":" + nombreCompleto + ":" + pais + ":" + provincia + ":" + localidad + ":" + email
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -163,10 +166,12 @@ func login() {
 	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
 
 	fmt.Print("Contraseña: ")
-	reader = bufio.NewReader(os.Stdin)
-	password, err := reader.ReadString('\n')
+	//reader = bufio.NewReader(os.Stdin)
+	//password, err := reader.ReadString('\n')
+	//chk(err)
+	//password = strings.TrimRight(password, "\r\n")
+	pass, err := gopass.GetPasswdMasked()
 	chk(err)
-	password = strings.TrimRight(password, "\r\n")
 
 	// Se envian los datos al servidor
 	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
@@ -175,7 +180,7 @@ func login() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Login:" + nombreUsuario + ":" + password
+	var datos string = "Login:" + nombreUsuario + ":" + string(pass[:])
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -256,8 +261,8 @@ func salaPublica(conn net.Conn, nombreUsuario string) {
 				}
 			default:
 				textoRecibido := netscan.Text()
-				fmt.Println(textoRecibido)
-				fmt.Print("Escriba su mensaje: ")
+				fmt.Println("\n" + textoRecibido)
+				fmt.Print("Continúe su mensaje: ")
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.
