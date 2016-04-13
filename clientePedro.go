@@ -146,7 +146,7 @@ func registro() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Registro:" + nombreUsuario + ":" + string(pass[:]) + ":" + nombreCompleto + ":" + pais + ":" + provincia + ":" + localidad + ":" + email
+	var datos string = "Registro#&" + nombreUsuario + "#&" + string(pass[:]) + "#&" + nombreCompleto + "#&" + pais + "#&" + provincia + "#&" + localidad + "#&" + email
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -180,7 +180,7 @@ func login() {
 
 	fmt.Println("conectado a ", conn.RemoteAddr())
 
-	var datos string = "Login:" + nombreUsuario + ":" + string(pass[:])
+	var datos string = "Login#&" + nombreUsuario + "#&" + string(pass[:])
 
 	fmt.Fprintln(conn, datos) // Se envian los datos al servidor
 
@@ -188,9 +188,10 @@ func login() {
 	netscan.Scan()                    // Se escanea la conexión
 
 	textoRecibido := netscan.Text()
-	fmt.Println(textoRecibido) // Se muestra el mensaje desde el servidor
+	textoAMostrar := strings.Replace(textoRecibido, "#&", ":", -1) // -1 significa que no hay límite de coincidencias para reemplazar.
+	fmt.Println(textoAMostrar)                                     // Se muestra el mensaje desde el servidor
 
-	s := strings.Split(textoRecibido, ":")
+	s := strings.Split(textoRecibido, "#&")
 	substringRespuesta := s[1]
 
 	if substringRespuesta != "Error" {
@@ -281,11 +282,11 @@ func salaPublica(conn net.Conn, nombreUsuario string) {
 			textoAEnviar := keyscan.Text()
 
 			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
-			if strings.Contains(textoAEnviar, ":") {
-				fmt.Println("Error: Carácter ':' inválido")
+			if strings.Contains(textoAEnviar, "#&") {
+				fmt.Println("Error: Secuencia '#&' inválida")
 				fmt.Print("Escriba su mensaje: ")
 			} else if textoAEnviar == "Salir" {
-				fmt.Fprintln(conn, "SalirChat:")
+				fmt.Fprintln(conn, "SalirChat#&")
 				quit <- true
 				done2 <- true
 				return
@@ -306,7 +307,7 @@ func salaPublica(conn net.Conn, nombreUsuario string) {
 func salasPrivadas(conn net.Conn, nombreUsuario string) {
 
 	// Primero se envia un mensaje al servidor para obtener los usuarios logueados actualmente.
-	fmt.Fprintln(conn, "GetLogueados:")
+	fmt.Fprintln(conn, "GetLogueados#&")
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 	textoRecibido := ""
 
@@ -314,12 +315,12 @@ func salasPrivadas(conn net.Conn, nombreUsuario string) {
 		textoRecibido = netscan.Text()
 		//fmt.Println(textoRecibido)
 
-		if strings.HasPrefix(textoRecibido, "GetLogueados:") {
+		if strings.HasPrefix(textoRecibido, "GetLogueados#&") {
 			break
 		}
 	}
 
-	usuariosLogueados := strings.Split(textoRecibido, ":")
+	usuariosLogueados := strings.Split(textoRecibido, "#&")
 	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
 	numUsuarios := len(usuariosLogueados) - 2
 
@@ -421,16 +422,16 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 			textoAEnviar := keyscan.Text()
 
 			// Se comprueba si el mensaje enviado corresponde con algún método del servidor
-			if strings.Contains(textoAEnviar, ":") {
-				fmt.Println("Error: Carácter ':' inválido")
+			if strings.Contains(textoAEnviar, "#&") {
+				fmt.Println("Error: Secuencia '#&' inválida")
 				fmt.Print("Escriba su mensaje: ")
 			} else if textoAEnviar == "Salir" {
-				fmt.Fprintln(conn, "SalirChat:")
+				fmt.Fprintln(conn, "SalirChat#&")
 				quit <- true
 				done2 <- true
 				return
 			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
-				textoPreparado := "SalaPrivada:" + esteUsuario + ":" + usuarioElegido + ":" + textoAEnviar
+				textoPreparado := "SalaPrivada#&" + esteUsuario + "#&" + usuarioElegido + "#&" + textoAEnviar
 				fmt.Fprintln(conn, textoPreparado) // Se envia la entrada al servidor
 			}
 		}
@@ -447,7 +448,7 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 func verPerfiles(conn net.Conn, nombreUsuario string) {
 
 	// Primero se envia un mensaje al servidor para obtener los usuarios registrados actualmente.
-	fmt.Fprintln(conn, "VerPerfiles:")
+	fmt.Fprintln(conn, "VerPerfiles#&")
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 	textoRecibido := ""
 
@@ -455,12 +456,12 @@ func verPerfiles(conn net.Conn, nombreUsuario string) {
 		textoRecibido = netscan.Text()
 		//fmt.Println(textoRecibido)
 
-		if strings.HasPrefix(textoRecibido, "VerPerfiles:") {
+		if strings.HasPrefix(textoRecibido, "VerPerfiles#&") {
 			break
 		}
 	}
 
-	usuarios := strings.Split(textoRecibido, ":")
+	usuarios := strings.Split(textoRecibido, "#&")
 	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
 	numUsuarios := len(usuarios) - 2
 

@@ -72,32 +72,32 @@ func server() {
 				fmt.Println("cliente[", port, "]: ", textoRecibido) // Se muestra el mensaje del cliente
 
 				// Se comprueba si el mensaje recibido corresponde con algún método del servidor
-				if strings.HasPrefix(textoRecibido, "Registro:") {
+				if strings.HasPrefix(textoRecibido, "Registro#&") {
 					procesarRegistro(conn, textoRecibido)
 
-				} else if strings.HasPrefix(textoRecibido, "Login:") {
+				} else if strings.HasPrefix(textoRecibido, "Login#&") {
 					procesarLogin(conn, textoRecibido, port, usuariosLogueados, connUsuariosLogueados)
 
-				} else if strings.HasPrefix(textoRecibido, "SalirChat:") {
+				} else if strings.HasPrefix(textoRecibido, "SalirChat#&") {
 					// Se envia algo para que el scanner del cliente pueda reaccionar
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
 					fmt.Fprintln(conn, "")
 
-				} else if strings.HasPrefix(textoRecibido, "GetLogueados:") {
+				} else if strings.HasPrefix(textoRecibido, "GetLogueados#&") {
 					// Se envia algo para que el scanner del cliente pueda reaccionar
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
-					var textoAEnviar string = "GetLogueados:"
+					var textoAEnviar string = "GetLogueados#&"
 					for key, value := range usuariosLogueados {
 						if value != port {
-							textoAEnviar += (key + ":")
+							textoAEnviar += (key + "#&")
 						}
 					}
 					fmt.Fprintln(conn, textoAEnviar)
 
-				} else if strings.HasPrefix(textoRecibido, "SalaPrivada:") {
+				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") {
 					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
 
-				} else if strings.HasPrefix(textoRecibido, "VerPerfiles:") {
+				} else if strings.HasPrefix(textoRecibido, "VerPerfiles#&") {
 					devolverPerfiles(conn)
 
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
@@ -116,7 +116,7 @@ func server() {
 
 func procesarRegistro(conn net.Conn, textoRecibido string) {
 	//fmt.Println(textoRecibido)
-	s := strings.Split(textoRecibido, ":")
+	s := strings.Split(textoRecibido, "#&")
 	nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email := s[1], s[2], s[3], s[4], s[5], s[6], s[7]
 	hashedPassword, errorHash := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	chk(errorHash)
@@ -152,26 +152,26 @@ func registrarBD(nombreUsuario string, password string, nombreCompleto string, p
 
 func procesarLogin(conn net.Conn, textoRecibido string, port string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
 	//fmt.Println(textoRecibido)
-	s := strings.Split(textoRecibido, ":")
+	s := strings.Split(textoRecibido, "#&")
 	nombreUsuario, password := s[1], s[2]
 
 	if buscarUsuarioLogueado(nombreUsuario, usuariosLogueados) {
 		respuestaServidor := "Nombre de usuario y/o contraseña incorrectos o el usuario ya está logueado"
 		fmt.Println(respuestaServidor)
-		fmt.Fprintln(conn, "Respuesta del servidor:Error: ", respuestaServidor)
+		fmt.Fprintln(conn, "Respuesta del servidor#&Error#& ", respuestaServidor)
 	} else {
 		comprobacion := loginBD(nombreUsuario, password)
 
 		if comprobacion == nil {
 			respuestaServidor := "Usuario correcto."
 			fmt.Println(respuestaServidor)
-			fmt.Fprintln(conn, "Respuesta del servidor: ", respuestaServidor)
+			fmt.Fprintln(conn, "Respuesta del servidor#& ", respuestaServidor)
 			usuariosLogueados[nombreUsuario] = port
 			connUsuariosLogueados[port] = conn
 		} else {
 			respuestaServidor := "Nombre de usuario y/o contraseña incorrectos o el usuario ya está logueado"
 			fmt.Println(respuestaServidor)
-			fmt.Fprintln(conn, "Respuesta del servidor:Error: ", respuestaServidor)
+			fmt.Fprintln(conn, "Respuesta del servidor#&Error#& ", respuestaServidor)
 		}
 	}
 }
@@ -255,7 +255,7 @@ func buscarUsuarioOrigen(portOrigen string, usuariosLogueados map[string]string)
 }
 
 func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
-	s := strings.Split(textoRecibido, ":")
+	s := strings.Split(textoRecibido, "#&")
 	usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
 
 	portOrigen := usuariosLogueados[usuarioOrigen]
@@ -296,7 +296,7 @@ func devolverPerfiles(conn net.Conn) {
 	localidad := res.Map("localidad")
 	email := res.Map("email")
 	tamano := len(rows)
-	textoAEnviar := "VerPerfiles:"
+	textoAEnviar := "VerPerfiles#&"
 
 	for i := 0; i < tamano; i++ {
 		valorNombreUsuario := rows[i].Str(nombreUsuario)
