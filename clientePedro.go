@@ -401,8 +401,8 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 				}
 			default:
 				textoRecibido := netscan.Text()
-				fmt.Println(textoRecibido)
-				fmt.Print("Escriba su mensaje: ")
+				fmt.Println("\n" + textoRecibido)
+				fmt.Print("Continúe su mensaje: ")
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.

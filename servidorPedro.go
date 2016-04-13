@@ -235,7 +235,7 @@ func enviarATodos(textoRecibido string, portOrigen string, usuariosLogueados map
 	for key, value := range usuariosLogueados {
 		if value != portOrigen { // Para no enviarlo al origen
 			usuarioOrigen := buscarUsuarioOrigen(portOrigen, usuariosLogueados)
-			textoAEnviar := "\t Sala pública: \n\t\t" + usuarioOrigen + ": " + textoRecibido
+			textoAEnviar := "Sala pública: " + usuarioOrigen + ": " + textoRecibido
 			fmt.Fprintln(connUsuariosLogueados[value], textoAEnviar) // Se envia la entrada al cliente
 			fmt.Println("Enviado '", textoRecibido, "' al usuario", key, "mediante el puerto", value)
 		}
@@ -270,7 +270,7 @@ func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, 
 		fmt.Println("Enviado '", envioOrigen, "' al usuario", usuarioOrigen, "mediante el puerto", portOrigen)
 
 	} else {
-		envioDestino := "\tSala privada: \n\t\t " + usuarioOrigen + ": " + mensajeAEnviar
+		envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
 		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
 		fmt.Println("Enviado '", envioDestino, "' al usuario", usuarioDestino, "mediante el puerto", portDestino)
 	}
