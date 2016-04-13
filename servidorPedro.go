@@ -69,7 +69,7 @@ func server() {
 			for scanner.Scan() { // Se escanea la conexión
 				textoRecibido := scanner.Text()
 
-				fmt.Println("cliente[", port, "]: ", textoRecibido) // Se muestra el mensaje del cliente
+				fmt.Println("cliente[" + port + "]: " + textoRecibido) // Se muestra el mensaje del cliente
 
 				// Se comprueba si el mensaje recibido corresponde con algún método del servidor
 				if strings.HasPrefix(textoRecibido, "Registro#&") {
@@ -97,8 +97,11 @@ func server() {
 				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") {
 					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
 
-				} else if strings.HasPrefix(textoRecibido, "VerPerfiles#&") {
-					devolverPerfiles(conn)
+				} else if strings.HasPrefix(textoRecibido, "VerTodosPerfiles#&") {
+					devolverTodosPerfiles(conn)
+
+				} else if strings.HasPrefix(textoRecibido, "BuscarUsuarios#&") {
+					buscarUsuarios(conn, textoRecibido)
 
 				} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
 					//fmt.Fprintln(conn, "ack del servidor: ", textoRecibido) // Se envia el ack al cliente
@@ -109,7 +112,7 @@ func server() {
 
 			conn.Close() // Se cierra la conexión al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
 			procesarLogout(port, usuariosLogueados, connUsuariosLogueados)
-			fmt.Println("cierre[", port, "]")
+			fmt.Println("cierre[" + port + "]")
 		}()
 	}
 }
@@ -146,7 +149,7 @@ func registrarBD(nombreUsuario string, password string, nombreCompleto string, p
 
 	_, err = con.Exec("insert into usuarios(nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email) values (?, ?, ?, ?, ?, ?, ?)", nombreUsuario, password, nombreCompleto, pais, provincia, localidad, email)
 
-	//fmt.Println("Almacenado ", nombreUsuario, " en la base de datos.")
+	//fmt.Println("Almacenado " + nombreUsuario + " en la base de datos.")
 	return err
 }
 
@@ -190,7 +193,6 @@ func loginBD(nombreUsuario string, password string) error {
 	chk(err)
 
 	// Obtener valores por el nombre de la columna devuelta.
-
 	passwordBd := res.Map("password")
 
 	if rows != nil {
@@ -211,14 +213,14 @@ func procesarLogout(port string, usuariosLogueados map[string]string, connUsuari
 		// Map antes del logout
 		fmt.Println("-- Map antes del logout --")
 		for key, value := range usuariosLogueados {
-			fmt.Println("Key:", key, "Value:", value)
+			fmt.Println("Key: " + key + " Value: " + value)
 		}
 	*/
 	for key, value := range usuariosLogueados {
 		if value == port {
 			delete(usuariosLogueados, key)
 			delete(connUsuariosLogueados, port)
-			fmt.Println("Logout usuario", key, "correcto")
+			fmt.Println("Logout usuario " + key + "correcto")
 			break
 		}
 	}
@@ -226,7 +228,7 @@ func procesarLogout(port string, usuariosLogueados map[string]string, connUsuari
 		// Map después del logout
 		fmt.Println("-- Map después del logout --")
 		for key, value := range usuariosLogueados {
-			fmt.Println("Key:", key, "Value:", value)
+			fmt.Println("Key: " + key + " Value: " + value)
 		}
 	*/
 }
@@ -237,7 +239,7 @@ func enviarATodos(textoRecibido string, portOrigen string, usuariosLogueados map
 			usuarioOrigen := buscarUsuarioOrigen(portOrigen, usuariosLogueados)
 			textoAEnviar := "Sala pública: " + usuarioOrigen + ": " + textoRecibido
 			fmt.Fprintln(connUsuariosLogueados[value], textoAEnviar) // Se envia la entrada al cliente
-			fmt.Println("Enviado '", textoRecibido, "' al usuario", key, "mediante el puerto", value)
+			fmt.Println("Enviado '" + textoRecibido + "' al usuario " + key + " mediante el puerto " + value)
 		}
 	}
 }
@@ -267,16 +269,16 @@ func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, 
 	if portDestino == "" {
 		envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
 		fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
-		fmt.Println("Enviado '", envioOrigen, "' al usuario", usuarioOrigen, "mediante el puerto", portOrigen)
+		fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
 
 	} else {
 		envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
 		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
-		fmt.Println("Enviado '", envioDestino, "' al usuario", usuarioDestino, "mediante el puerto", portDestino)
+		fmt.Println("Enviado '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
 	}
 }
 
-func devolverPerfiles(conn net.Conn) {
+func devolverTodosPerfiles(conn net.Conn) {
 	database := "gochat"
 	user := "usuarioGo"
 	passwordBD := "usuarioGo"
@@ -296,7 +298,7 @@ func devolverPerfiles(conn net.Conn) {
 	localidad := res.Map("localidad")
 	email := res.Map("email")
 	tamano := len(rows)
-	textoAEnviar := "VerPerfiles#&"
+	textoAEnviar := "VerTodosPerfiles#&"
 
 	for i := 0; i < tamano; i++ {
 		valorNombreUsuario := rows[i].Str(nombreUsuario)
@@ -306,7 +308,51 @@ func devolverPerfiles(conn net.Conn) {
 		valorLocalidad := rows[i].Str(localidad)
 		valorEmail := rows[i].Str(email)
 
-		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + ":"
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
+	}
+	//fmt.Println(textoAEnviar)
+	fmt.Fprintln(conn, textoAEnviar)
+}
+
+func buscarUsuarios(conn net.Conn, textoRecibido string) {
+
+	//fmt.Println(textoRecibido)
+	s := strings.Split(textoRecibido, "#&")
+	buscado := s[1]
+	//fmt.Println(buscado)
+
+	database := "gochat"
+	user := "usuarioGo"
+	passwordBD := "usuarioGo"
+
+	db := mysql.New("tcp", "", "127.0.0.1:3306", user, passwordBD, database)
+	err := db.Connect()
+	chk(err)
+
+	sqlQuery := "SELECT * FROM usuarios WHERE nombreUsuario LIKE '%" + buscado + "%';"
+	//fmt.Println(sqlQuery)
+	rows, res, err := db.Query(sqlQuery)
+	chk(err)
+
+	// Obtener valores por el nombre de la columna devuelta.
+	nombreUsuario := res.Map("nombreUsuario")
+	nombreCompleto := res.Map("nombreCompleto")
+	pais := res.Map("pais")
+	provincia := res.Map("provincia")
+	localidad := res.Map("localidad")
+	email := res.Map("email")
+	tamano := len(rows)
+	textoAEnviar := "UsuariosEncontrados#&"
+
+	for i := 0; i < tamano; i++ {
+		valorNombreUsuario := rows[i].Str(nombreUsuario)
+		valorNombreCompleto := rows[i].Str(nombreCompleto)
+		valorPais := rows[i].Str(pais)
+		valorProvincia := rows[i].Str(provincia)
+		valorLocalidad := rows[i].Str(localidad)
+		valorEmail := rows[i].Str(email)
+
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
 	}
 	//fmt.Println(textoAEnviar)
 	fmt.Fprintln(conn, textoAEnviar)

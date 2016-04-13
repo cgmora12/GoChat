@@ -60,7 +60,7 @@ func elegirOpcionMain() {
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2 o 3)")
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida (1, 2 o 3)")
 		}
 	}
 }
@@ -71,7 +71,7 @@ func client() {
 	chk(err)
 	defer conn.Close() // Se cierra la conexión al final
 
-	fmt.Println("conectado a ", conn.RemoteAddr())
+	fmt.Println("conectado a " + conn.RemoteAddr())
 
 	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
 	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
@@ -203,7 +203,7 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 	salir := false
 	for !salir {
 		fmt.Println("\n\n-- GoChat --")
-		fmt.Println("-- Usuario:", nombreUsuario, "--")
+		fmt.Println("-- Usuario: " + nombreUsuario + " --")
 
 		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Sala pública")
@@ -231,7 +231,7 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida (1, 2, 3 o 4)")
 		}
 	}
 }
@@ -244,7 +244,7 @@ func salaPublica(conn net.Conn, nombreUsuario string) {
 	quit := make(chan bool)
 
 	fmt.Println("\n\n-- Sala pública --")
-	fmt.Println("-- Usuario:", nombreUsuario, "--")
+	fmt.Println("-- Usuario: " + nombreUsuario + " --")
 	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 
@@ -328,7 +328,7 @@ func salasPrivadas(conn net.Conn, nombreUsuario string) {
 	salir := false
 	for !salir {
 		fmt.Println("\n\n-- Salas privadas --")
-		fmt.Println("-- Usuario:", nombreUsuario, "--")
+		fmt.Println("-- Usuario: " + nombreUsuario + " --")
 
 		fmt.Println("Eliga el usuario con quien quiera hablar:\n")
 
@@ -352,11 +352,11 @@ func salasPrivadas(conn net.Conn, nombreUsuario string) {
 
 		opcionElegidaInt, err := strconv.Atoi(opcionElegida)
 		if err != nil {
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida")
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida")
 
 		} else if opcionElegidaInt > 0 && opcionElegidaInt <= numUsuarios {
 			usuarioElegido := usuariosLogueados[opcionElegidaInt]
-			//fmt.Println("Elegido: ", opcionElegidaInt, ".-", usuarioElegido)
+			//fmt.Println("Elegido: " + opcionElegidaInt + ".- " + usuarioElegido)
 			entrarSalaPrivada(conn, nombreUsuario, usuarioElegido)
 
 			// Al salir de la sala privada no se vuelven a pedir los usuarios logueados.
@@ -370,7 +370,7 @@ func salasPrivadas(conn net.Conn, nombreUsuario string) {
 			salir = true
 
 		} else {
-			fmt.Println("\nOpción '", opcionElegida, "' desconocida. Introduzca una opción válida")
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida")
 		}
 	}
 }
@@ -382,8 +382,8 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	done2 := make(chan bool)
 	quit := make(chan bool)
 
-	fmt.Println("\n\n-- Sala privada con", usuarioElegido, "--")
-	fmt.Println("-- Usuario:", esteUsuario, "--")
+	fmt.Println("\n\n-- Sala privada con " + usuarioElegido + " --")
+	fmt.Println("-- Usuario: " + esteUsuario + " --")
 	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
 
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
@@ -446,9 +446,40 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 }
 
 func verPerfiles(conn net.Conn, nombreUsuario string) {
+	salir := false
+	for !salir {
+		fmt.Println("\n\n-- Perfiles de usuarios --")
+		fmt.Println("-- Usuario: " + nombreUsuario + " --")
+		fmt.Println("Eliga una opción: ")
+		fmt.Println("1.- Ver todos los usuarios")
+		fmt.Println("2.- Buscar usuarios")
+		fmt.Println("3.- Volver atrás")
+		fmt.Print("Opción elegida (introduzca el número): ")
 
+		reader := bufio.NewReader(os.Stdin)
+		opcionElegida, err := reader.ReadString('\n')
+		chk(err)
+		opcionElegida = strings.TrimRight(opcionElegida, "\r\n")
+
+		switch opcionElegida {
+		case "1":
+			verTodosPerfiles(conn)
+
+		case "2":
+			buscarUsuarios(conn)
+
+		case "3":
+			salir = true
+
+		default:
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida (1, 2 o 3)")
+		}
+	}
+}
+
+func verTodosPerfiles(conn net.Conn) {
 	// Primero se envia un mensaje al servidor para obtener los usuarios registrados actualmente.
-	fmt.Fprintln(conn, "VerPerfiles#&")
+	fmt.Fprintln(conn, "VerTodosPerfiles#&")
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 	textoRecibido := ""
 
@@ -456,7 +487,7 @@ func verPerfiles(conn net.Conn, nombreUsuario string) {
 		textoRecibido = netscan.Text()
 		//fmt.Println(textoRecibido)
 
-		if strings.HasPrefix(textoRecibido, "VerPerfiles#&") {
+		if strings.HasPrefix(textoRecibido, "VerTodosPerfiles#&") {
 			break
 		}
 	}
@@ -464,11 +495,9 @@ func verPerfiles(conn net.Conn, nombreUsuario string) {
 	usuarios := strings.Split(textoRecibido, "#&")
 	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
 	numUsuarios := len(usuarios) - 2
+	//fmt.Println(usuarios)
 
 	// El siguiente paso es elegir el usuario con quien se quiere hablar.
-	fmt.Println("\n\n-- Perfiles de usuarios --")
-	fmt.Println("-- Usuario:", nombreUsuario, "--")
-
 	fmt.Println("Usuarios:")
 
 	i := 1
@@ -479,7 +508,50 @@ func verPerfiles(conn net.Conn, nombreUsuario string) {
 		for ; i <= numUsuarios; i++ {
 			// usuarios[i] porque me hay que saltarse la posición 0 ("GetLogueados:")
 			textoAMostrar := strings.Replace(usuarios[i], "-", "\n", -1) // -1 significa que no hay límite de coincidencias para reemplazar.
-			fmt.Println("\nUsuario ", i, ".-\n", textoAMostrar)
+			fmt.Println("\nUsuario ", i, "\n", textoAMostrar)
+		}
+	}
+}
+
+func buscarUsuarios(conn net.Conn) {
+	// Primero se le pide al usuario que escriba lo que quiere buscar.
+	fmt.Print("Texto a buscar: ")
+	reader := bufio.NewReader(os.Stdin)
+	buscado, err := reader.ReadString('\n')
+	chk(err)
+	buscado = strings.TrimRight(buscado, "\r\n")
+
+	// Luego se envia el texto buscado al servidor para obtener los usuarios que contentan dicho texto.
+	textoAEnviar := "BuscarUsuarios#&" + buscado
+	fmt.Fprintln(conn, textoAEnviar)
+	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+	textoRecibido := ""
+
+	for netscan.Scan() {
+		textoRecibido = netscan.Text()
+		//fmt.Println(textoRecibido)
+
+		if strings.HasPrefix(textoRecibido, "UsuariosEncontrados#&") {
+			break
+		}
+	}
+
+	usuarios := strings.Split(textoRecibido, "#&")
+	// Es -2 porque hay uno inicial con "GetLogueados:" y con los ":" al final del string, se obtiene una última posición vacía
+	numUsuarios := len(usuarios) - 2
+
+	// El siguiente paso es elegir el usuario con quien se quiere hablar.
+	fmt.Println("Usuarios:")
+
+	i := 1
+	if numUsuarios == 0 {
+		fmt.Println("No se ha encontrado ningún usuario que contenga '" + buscado + "'.")
+
+	} else {
+		for ; i <= numUsuarios; i++ {
+			// usuarios[i] porque me hay que saltarse la posición 0 ("GetLogueados:")
+			textoAMostrar := strings.Replace(usuarios[i], "-", "\n", -1) // -1 significa que no hay límite de coincidencias para reemplazar.
+			fmt.Println("\nUsuario ", i, "\n", textoAMostrar)
 		}
 	}
 }
