@@ -1,0 +1,9 @@
+Cifrado en tiempo real. (flujo) -> César
+Optimización de privacidad (cifrado en el cliente).
+Mecanismo de autenticación seguro (contraseñas). -> César
+Login/Registro. -> Pedro
+Chats (público y privado). -> Pedro
+Ver y buscar perfiles. -> Pedro
+Transporte de red seguro (tls). -> César y Pedro
+Sincronización de mensajes entre usuarios (mutex https://golang.org/pkg/sync/#Mutex). -> Pedro
+Memoria. -> César y Pedro
