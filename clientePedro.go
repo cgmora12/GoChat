@@ -9,8 +9,12 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"github.com/howeyc/gopass"
+	"math/big"
 	"net"
 	"os"
 	"strconv"
@@ -388,6 +392,94 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 
+	// Todo: Intercambio de claves
+	cli_keys, err := rsa.GenerateKey(rand.Reader, 1024) // generamos un par de claves (privada, pública) para el cliente
+	chk(err)
+	cli_keys.Precompute() // aceleramos su uso con un precálculo
+
+	cli_keys_json, err := json.Marshal(cli_keys.PublicKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(cli_keys_json))
+
+	clavePub := "Clave#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(cli_keys_json)
+	fmt.Fprintln(conn, clavePub) // Se envia la entrada al servidor
+
+	var claveRecibida string
+	for netscan.Scan() {
+
+		claveRecibida = netscan.Text()
+		if strings.HasPrefix(claveRecibida, "Clave:") {
+
+			clavePub := "Clave#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(cli_keys_json)
+			fmt.Fprintln(conn, clavePub) // Se envia la entrada al servidor
+			break
+		}
+
+	}
+
+	fmt.Println("Mensaje recibido:" + claveRecibida)
+	cli_pub := strings.Split(string(claveRecibida), "Clave:")[1]
+	fmt.Println("Clave recibida:" + cli_pub)
+
+	var cli_pub_key rsa.PublicKey
+	cli_pub_trozo1 := strings.Split(cli_pub, ":")[1]
+	fmt.Println("Trozo1:" + cli_pub_trozo1)
+	cli_pub_trozo2 := strings.Split(cli_pub_trozo1, ",")[0]
+	fmt.Println("Trozo2:" + cli_pub_trozo2)
+	fmt.Println("E:" + strings.Split(strings.Split(cli_pub, ":")[2], "}")[0])
+	cli_pub_key.E, err = strconv.Atoi(strings.Split(strings.Split(cli_pub, ":")[2], "}")[0])
+	bigint := new(big.Int)
+	bigint.SetString(cli_pub_trozo2, 10)
+	cli_pub_key.N = bigint
+
+	//cli_token := make([]byte, 48) // 384 bits (256 bits de clave + 128 bits para el IV)
+	buff := make([]byte, 256)   // contendrá el token cifrado con clave pública (puede ocupar más que el texto en claro)
+	cli_token := randString(48) // generación del token aleatorio para el cliente
+
+	fmt.Println("token creado ", cli_token)
+
+	// ciframos el token del cliente con la clave pública del otro cliente
+	enctoken, err := rsa.EncryptPKCS1v15(rand.Reader, &cli_pub_key, []byte(cli_token))
+	chk(err)
+
+	fmt.Println("token cifrado ", string(enctoken)) // Se envia la entrada al servidor
+	enctokenString := strings.Replace(string(enctoken), "\n", "-----n", -1)
+
+	fmt.Println("token cifrado sin endlines ", enctokenString) // Se envia la entrada al servidor
+	// Falla al encriptar y poner saltos de linea
+	tokenCliente := "Token#&" + esteUsuario + "#&" + usuarioElegido + "#&" + enctokenString
+	fmt.Fprintln(conn, tokenCliente) // Se envia la entrada al servidor
+
+	var tokenRecibido string
+	for netscan.Scan() {
+
+		tokenRecibido = netscan.Text()
+		if strings.HasPrefix(tokenRecibido, "Token:") {
+			fmt.Println("Token recibido:" + tokenRecibido)
+			break
+		}
+
+	}
+
+	fmt.Println("Token recibido sin prefijo: " + strings.Split(tokenRecibido, "Token:")[1])
+	fmt.Println("Token recibido sin prefijo ni endlines: " + strings.Replace(strings.Split(tokenRecibido, "Token:")[1], "-----n", "\n", -1))
+
+	buff = []byte(strings.Replace(strings.Split(tokenRecibido, "Token:")[1], "-----n", "\n", -1))
+
+	// desciframos el token del otro cliente con nuestra clave privada
+	session_key, err := rsa.DecryptPKCS1v15(rand.Reader, cli_keys, buff)
+	chk(err)
+
+	// realizamos el XOR entre ambos tokens (cliente y servidor acaban con la misma clave de sesión)
+	for i := 0; i < len(cli_token); i++ {
+		session_key[i] ^= cli_token[i]
+	}
+
+	fmt.Println("Clave de sesion: " + string(session_key))
+
 	// Goroutine para leer los mensajes
 	go func() {
 		// Para mantener abierta la conexión
@@ -554,4 +646,14 @@ func buscarUsuarios(conn net.Conn) {
 			fmt.Println("\nUsuario ", i, "\n", textoAMostrar)
 		}
 	}
+}
+
+func randString(n int) string {
+	const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	var bytes = make([]byte, n)
+	rand.Read(bytes)
+	for i, b := range bytes {
+		bytes[i] = alphanum[b%byte(len(alphanum))]
+	}
+	return string(bytes)
 }
