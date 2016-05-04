@@ -9,11 +9,15 @@ package main
 
 import (
 	"bufio"
+	//"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"github.com/codahale/chacha20"
+	//"github.com/dchest/chacha20"
 	"github.com/howeyc/gopass"
+	//"github.com/tang0th/go-chacha20/chacha"
 	"math/big"
 	"net"
 	"os"
@@ -389,10 +393,11 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	fmt.Println("\n\n-- Sala privada con " + usuarioElegido + " --")
 	fmt.Println("-- Usuario: " + esteUsuario + " --")
 	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
+	fmt.Println("Espere a que se conecte el otro usuario...")
 
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
 
-	// Todo: Intercambio de claves
+	// Intercambio de claves
 	cli_keys, err := rsa.GenerateKey(rand.Reader, 1024) // generamos un par de claves (privada, pública) para el cliente
 	chk(err)
 	cli_keys.Precompute() // aceleramos su uso con un precálculo
@@ -437,7 +442,7 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 
 	//cli_token := make([]byte, 48) // 384 bits (256 bits de clave + 128 bits para el IV)
 	buff := make([]byte, 256)   // contendrá el token cifrado con clave pública (puede ocupar más que el texto en claro)
-	cli_token := randString(48) // generación del token aleatorio para el cliente
+	cli_token := randString(32) // generación del token aleatorio para el cliente
 
 	fmt.Println("token creado ", cli_token)
 
@@ -474,11 +479,20 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	chk(err)
 
 	// realizamos el XOR entre ambos tokens (cliente y servidor acaban con la misma clave de sesión)
-	for i := 0; i < len(cli_token); i++ {
+	var i int
+	for i = 0; i < len(cli_token); i++ {
 		session_key[i] ^= cli_token[i]
 	}
 
+	// Todo: Usar la clave de sesion para cifrar mensajes
 	fmt.Println("Clave de sesion: " + string(session_key))
+	cifrador, err := chacha20.New(session_key, []byte("nonce123"))
+	chk(err)
+
+	/* Como codificar
+	out := []byte("hola")
+	cifrador.XORKeyStream(out, out) //dst, src
+	*/
 
 	// Goroutine para leer los mensajes
 	go func() {
@@ -493,8 +507,11 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 					fmt.Println("Error: Canal 'quit' cerrado")
 				}
 			default:
-				textoRecibido := netscan.Text()
-				fmt.Println("\n" + textoRecibido)
+				textoRecibidoCodificado := netscan.Text()
+				fmt.Println("\nTexto recibido codificado: " + strings.Split(textoRecibidoCodificado, ":")[2])
+				textoRecibido := []byte(strings.Split(textoRecibidoCodificado, ": ")[2])
+				cifrador.XORKeyStream(textoRecibido, textoRecibido) //dst, src
+				fmt.Println("\n" + string(textoRecibido))
 				fmt.Print("Continúe su mensaje: ")
 			}
 		}
@@ -523,7 +540,9 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 				done2 <- true
 				return
 			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
-				textoPreparado := "SalaPrivada#&" + esteUsuario + "#&" + usuarioElegido + "#&" + textoAEnviar
+				textoAEnviarCodificado := []byte(textoAEnviar)
+				cifrador.XORKeyStream(textoAEnviarCodificado, textoAEnviarCodificado) //dst, src
+				textoPreparado := "SalaPrivada#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(textoAEnviarCodificado)
 				fmt.Fprintln(conn, textoPreparado) // Se envia la entrada al servidor
 			}
 		}
