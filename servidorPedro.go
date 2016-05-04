@@ -94,7 +94,8 @@ func server() {
 					}
 					fmt.Fprintln(conn, textoAEnviar)
 
-				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") {
+				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") || strings.HasPrefix(textoRecibido, "Clave#&") || strings.HasPrefix(textoRecibido, "Token#&") {
+
 					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
 
 				} else if strings.HasPrefix(textoRecibido, "VerTodosPerfiles#&") {
@@ -220,7 +221,7 @@ func procesarLogout(port string, usuariosLogueados map[string]string, connUsuari
 		if value == port {
 			delete(usuariosLogueados, key)
 			delete(connUsuariosLogueados, port)
-			fmt.Println("Logout usuario " + key + "correcto")
+			fmt.Println("Logout usuario " + key + " correcto")
 			break
 		}
 	}
@@ -257,25 +258,72 @@ func buscarUsuarioOrigen(portOrigen string, usuariosLogueados map[string]string)
 }
 
 func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
-	s := strings.Split(textoRecibido, "#&")
-	usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
+	if strings.HasPrefix(textoRecibido, "Clave#&") {
 
-	portOrigen := usuariosLogueados[usuarioOrigen]
-	connOrigen := connUsuariosLogueados[portOrigen]
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, clavePub := s[1], s[2], s[3]
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
 
-	portDestino := usuariosLogueados[usuarioDestino]
-	connDestino := connUsuariosLogueados[portDestino]
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
 
-	if portDestino == "" {
-		envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
-		fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
-		fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Clave:" + clavePub
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviada clave '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
+
+	} else if strings.HasPrefix(textoRecibido, "Token#&") {
+
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, tokenCli := s[1], s[2], s[3]
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
+
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
+
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Token:" + tokenCli
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviado token '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
 
 	} else {
-		envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
-		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
-		fmt.Println("Enviado '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
+
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
+
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
+
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado mensaje '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviado '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
+
 	}
+
 }
 
 func devolverTodosPerfiles(conn net.Conn) {
