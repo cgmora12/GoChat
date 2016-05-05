@@ -26,6 +26,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"net"
+	//"strconv"
 	"strings"
 )
 
@@ -82,6 +83,14 @@ func server() {
 					// Se envia algo para que el scanner del cliente pueda reaccionar
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
 					fmt.Fprintln(conn, "")
+
+					if len(strings.Split(textoRecibido, "#&")[1]) > 0 {
+						//fmt.Println(strconv.Itoa(len(strings.Split(textoRecibido, "#&")[1])))
+						portDestino := usuariosLogueados[strings.Split(textoRecibido, "#&")[1]]
+						connDestino := connUsuariosLogueados[portDestino]
+						fmt.Println("Enviar salir al destino: " + portDestino)
+						fmt.Fprintln(connDestino, "Salir")
+					}
 
 				} else if strings.HasPrefix(textoRecibido, "GetLogueados#&") {
 					// Se envia algo para que el scanner del cliente pueda reaccionar
@@ -356,7 +365,20 @@ func devolverTodosPerfiles(conn net.Conn) {
 		valorLocalidad := rows[i].Str(localidad)
 		valorEmail := rows[i].Str(email)
 
-		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "- Nombre completo = " + valorNombreCompleto
+		if len(valorPais) > 0 {
+			textoAEnviar += "- Pais = " + valorPais
+		}
+		if len(valorProvincia) > 0 {
+			textoAEnviar += "- Provincia = " + valorProvincia
+		}
+		if len(valorLocalidad) > 0 {
+			textoAEnviar += "- Localidad = " + valorLocalidad
+		}
+		if len(valorEmail) > 0 {
+			textoAEnviar += "- Email = " + valorEmail
+		}
+		textoAEnviar += "#&"
 	}
 	//fmt.Println(textoAEnviar)
 	fmt.Fprintln(conn, textoAEnviar)
@@ -400,7 +422,20 @@ func buscarUsuarios(conn net.Conn, textoRecibido string) {
 		valorLocalidad := rows[i].Str(localidad)
 		valorEmail := rows[i].Str(email)
 
-		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "- Nombre completo = " + valorNombreCompleto
+		if len(valorPais) > 0 {
+			textoAEnviar += "- Pais = " + valorPais
+		}
+		if len(valorProvincia) > 0 {
+			textoAEnviar += "- Provincia = " + valorProvincia
+		}
+		if len(valorLocalidad) > 0 {
+			textoAEnviar += "- Localidad = " + valorLocalidad
+		}
+		if len(valorEmail) > 0 {
+			textoAEnviar += "- Email = " + valorEmail
+		}
+		textoAEnviar += "#&"
 	}
 	//fmt.Println(textoAEnviar)
 	fmt.Fprintln(conn, textoAEnviar)
