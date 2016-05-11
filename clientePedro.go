@@ -9,8 +9,16 @@ package main
 
 import (
 	"bufio"
+	//"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"fmt"
+	"github.com/codahale/chacha20"
+	//"github.com/dchest/chacha20"
 	"github.com/howeyc/gopass"
+	//"github.com/tang0th/go-chacha20/chacha"
+	"math/big"
 	"net"
 	"os"
 	"strconv"
@@ -33,12 +41,10 @@ func elegirOpcionMain() {
 	for !salir {
 		fmt.Println("\n\n-- Cliente GoChat --")
 
-		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Login")
 		fmt.Println("2.- Registro")
-		//fmt.Println("3.- Entrar modo cliente")
 		fmt.Println("3.- Salir")
-		fmt.Print("Opción elegida (introduzca el número): ")
+		fmt.Print("Elija una opción: ")
 
 		reader := bufio.NewReader(os.Stdin)
 		opcionElegida, err := reader.ReadString('\n')
@@ -51,55 +57,40 @@ func elegirOpcionMain() {
 
 		case "2":
 			registro()
-			/*
-				case "3":
-					fmt.Println("\n- Entrar modo cliente -")
-					client()
-			*/
+
 		case "3":
 			salir = true
 
 		default:
-			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida (1, 2 o 3)")
+			fmt.Println("\nOpción '" + opcionElegida + "' desconocida. Introduzca una opción válida (1, 2 ó 3)")
 		}
 	}
 }
-
-/*
-func client() {
-	conn, err := net.Dial("tcp", "localhost:1337") // Se llama al servidor
-	chk(err)
-	defer conn.Close() // Se cierra la conexión al final
-
-	fmt.Println("conectado a " + conn.RemoteAddr())
-
-	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
-	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
-
-	for keyscan.Scan() { // Se escanea la entrada
-		textoAEnviar := keyscan.Text()
-
-		// Se comprueba si el mensaje enviado corresponde con algún método del servidor
-		if strings.HasPrefix(textoAEnviar, "Registro:") || strings.HasPrefix(textoAEnviar, "Login:") {
-			fmt.Println("No se puede enviar un mensaje con esa estructura")
-		} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
-			fmt.Fprintln(conn, textoAEnviar)           // Se envia la entrada al servidor
-			netscan.Scan()                             // Se escanea la conexión
-			fmt.Println("servidor: " + netscan.Text()) // Se muestra el mensaje recibido desde el servidor
-		}
-	}
-}
-*/
 
 func registro() {
 	fmt.Println("\n- Registro -")
 
 	// Se obtienen los datos de registro
-	fmt.Print("Nombre de usuario: ")
-	reader := bufio.NewReader(os.Stdin)
-	nombreUsuario, err := reader.ReadString('\n')
-	chk(err)
-	nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
+
+	var reader *bufio.Reader
+	var nombreUsuario string
+	var nombreCompleto string
+	var err error
+
+	nombreOk := false
+	for !nombreOk {
+		fmt.Print("Nombre de usuario: ")
+		reader = bufio.NewReader(os.Stdin)
+		nombreUsuario, err = reader.ReadString('\n')
+		chk(err)
+		nombreUsuario = strings.TrimRight(nombreUsuario, "\r\n")
+
+		if len(nombreUsuario) >= 5 && len(nombreUsuario) <= 20 {
+			nombreOk = true
+		} else {
+			fmt.Println("El nombre de usuario debe contener entre 5 y 20 caracteres.")
+		}
+	}
 
 	fmt.Print("Contraseña: ")
 	//reader = bufio.NewReader(os.Stdin)
@@ -109,11 +100,20 @@ func registro() {
 	pass, err := gopass.GetPasswdMasked()
 	chk(err)
 
-	fmt.Print("Nombre completo: ")
-	reader = bufio.NewReader(os.Stdin)
-	nombreCompleto, err := reader.ReadString('\n')
-	chk(err)
-	nombreCompleto = strings.TrimRight(nombreCompleto, "\r\n")
+	nombreCompletoOk := false
+	for !nombreCompletoOk {
+		fmt.Print("Nombre completo: ")
+		reader = bufio.NewReader(os.Stdin)
+		nombreCompleto, err = reader.ReadString('\n')
+		chk(err)
+		nombreCompleto = strings.TrimRight(nombreCompleto, "\r\n")
+
+		if len(nombreCompleto) >= 5 && len(nombreCompleto) <= 20 {
+			nombreCompletoOk = true
+		} else {
+			fmt.Println("El nombre debe contener entre 5 y 20 caracteres.")
+		}
+	}
 
 	fmt.Print("País: ")
 	reader = bufio.NewReader(os.Stdin)
@@ -203,14 +203,13 @@ func elegirOpcionChat(nombreUsuario string, conn net.Conn) {
 	salir := false
 	for !salir {
 		fmt.Println("\n\n-- GoChat --")
-		fmt.Println("-- Usuario: " + nombreUsuario + " --")
+		fmt.Println("-- Usuario: " + nombreUsuario + " --\n")
 
-		fmt.Println("Eliga una opción: ")
 		fmt.Println("1.- Sala pública")
 		fmt.Println("2.- Salas privadas")
 		fmt.Println("3.- Ver perfiles de usuarios")
 		fmt.Println("4.- Logout")
-		fmt.Print("Opción elegida (introduzca el número): ")
+		fmt.Print("Elija una opción: ")
 
 		reader := bufio.NewReader(os.Stdin)
 		opcionElegida, err := reader.ReadString('\n')
@@ -262,8 +261,10 @@ func salaPublica(conn net.Conn, nombreUsuario string) {
 				}
 			default:
 				textoRecibido := netscan.Text()
-				fmt.Println("\n" + textoRecibido)
-				fmt.Print("Continúe su mensaje: ")
+				if strings.Split(textoRecibido, ": ")[0] == "Sala pública" {
+					fmt.Println("\n" + textoRecibido)
+					fmt.Print("Continúe su mensaje: ")
+				}
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.
@@ -330,7 +331,7 @@ func salasPrivadas(conn net.Conn, nombreUsuario string) {
 		fmt.Println("\n\n-- Salas privadas --")
 		fmt.Println("-- Usuario: " + nombreUsuario + " --")
 
-		fmt.Println("Eliga el usuario con quien quiera hablar:\n")
+		fmt.Println("Elija el usuario con quien quiera hablar:\n")
 
 		i := 1
 		if numUsuarios == 0 {
@@ -385,8 +386,21 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	fmt.Println("\n\n-- Sala privada con " + usuarioElegido + " --")
 	fmt.Println("-- Usuario: " + esteUsuario + " --")
 	fmt.Println("Escriba 'Salir' para volver al menú de usuario")
+	fmt.Println("Espere a que se conecte el otro usuario...")
 
 	netscan := bufio.NewScanner(conn) // Se crea un scanner para la conexión (datos desde el servidor)
+
+	session_key := intercambioDeClaves(conn, esteUsuario, usuarioElegido, netscan)
+
+	// Todo: Usar la clave de sesion para cifrar mensajes
+	//fmt.Println("Clave de sesion: " + string(session_key))
+	cifrador, err := chacha20.New(session_key, []byte("nonce123"))
+	chk(err)
+
+	/* Como codificar
+	out := []byte("hola")
+	cifrador.XORKeyStream(out, out) //dst, src
+	*/
 
 	// Goroutine para leer los mensajes
 	go func() {
@@ -401,9 +415,25 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 					fmt.Println("Error: Canal 'quit' cerrado")
 				}
 			default:
-				textoRecibido := netscan.Text()
-				fmt.Println("\n" + textoRecibido)
-				fmt.Print("Continúe su mensaje: ")
+				textoRecibidoCodificado := netscan.Text()
+
+				if textoRecibidoCodificado == "Salir" {
+
+					fmt.Println("\nEl usuario ha abandonado el chat...")
+					fmt.Println("Escriba: Salir")
+
+				} else {
+
+					//fmt.Println("\nTexto recibido codificado: " + strings.Split(textoRecibidoCodificado, ":")[2])
+					textoRecibido := []byte(strings.Split(textoRecibidoCodificado, ": ")[2])
+					if strings.Split(textoRecibidoCodificado, ": ")[0] == "Sala privada" {
+						cifrador.XORKeyStream(textoRecibido, textoRecibido) //dst, src
+					}
+					fmt.Println("\n" + strings.Split(textoRecibidoCodificado, ": ")[0] + ": " + strings.Split(textoRecibidoCodificado, ": ")[1] +
+						": " + string(textoRecibido))
+					fmt.Print("Continúe su mensaje: ")
+
+				}
 			}
 		}
 		// Para indicar a la función que la goroutine ya ha acabado.
@@ -426,12 +456,14 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 				fmt.Println("Error: Secuencia '#&' inválida")
 				fmt.Print("Escriba su mensaje: ")
 			} else if textoAEnviar == "Salir" {
-				fmt.Fprintln(conn, "SalirChat#&")
+				fmt.Fprintln(conn, "SalirChat#&"+usuarioElegido)
 				quit <- true
 				done2 <- true
 				return
 			} else { // Si el mensaje recibido no se corresponde con ningún método del servidor
-				textoPreparado := "SalaPrivada#&" + esteUsuario + "#&" + usuarioElegido + "#&" + textoAEnviar
+				textoAEnviarCodificado := []byte(textoAEnviar)
+				cifrador.XORKeyStream(textoAEnviarCodificado, textoAEnviarCodificado) //dst, src
+				textoPreparado := "SalaPrivada#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(textoAEnviarCodificado)
 				fmt.Fprintln(conn, textoPreparado) // Se envia la entrada al servidor
 			}
 		}
@@ -445,16 +477,104 @@ func entrarSalaPrivada(conn net.Conn, esteUsuario string, usuarioElegido string)
 	close(quit)
 }
 
+func intercambioDeClaves(conn net.Conn, esteUsuario string, usuarioElegido string, netscan *bufio.Scanner) []byte {
+
+	// Intercambio de claves
+	cli_keys, err := rsa.GenerateKey(rand.Reader, 1024) // generamos un par de claves (privada, pública) para el cliente
+	chk(err)
+	cli_keys.Precompute() // aceleramos su uso con un precálculo
+
+	cli_keys_json, err := json.Marshal(cli_keys.PublicKey)
+	chk(err)
+	//fmt.Println(string(cli_keys_json))
+
+	clavePub := "Clave#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(cli_keys_json)
+	fmt.Fprintln(conn, clavePub) // Se envia la entrada al servidor
+
+	var claveRecibida string
+	for netscan.Scan() {
+
+		claveRecibida = netscan.Text()
+		if strings.HasPrefix(claveRecibida, "Clave:") {
+
+			clavePub := "Clave#&" + esteUsuario + "#&" + usuarioElegido + "#&" + string(cli_keys_json)
+			fmt.Fprintln(conn, clavePub) // Se envia la entrada al servidor
+			break
+		}
+
+	}
+
+	//fmt.Println("Mensaje recibido:" + claveRecibida)
+	cli_pub := strings.Split(string(claveRecibida), "Clave:")[1]
+	//fmt.Println("Clave recibida:" + cli_pub)
+
+	var cli_pub_key rsa.PublicKey
+	cli_pub_trozo1 := strings.Split(cli_pub, ":")[1]
+	//fmt.Println("Trozo1:" + cli_pub_trozo1)
+	cli_pub_trozo2 := strings.Split(cli_pub_trozo1, ",")[0]
+	//fmt.Println("Trozo2:" + cli_pub_trozo2)
+	//fmt.Println("E:" + strings.Split(strings.Split(cli_pub, ":")[2], "}")[0])
+	cli_pub_key.E, err = strconv.Atoi(strings.Split(strings.Split(cli_pub, ":")[2], "}")[0])
+	bigint := new(big.Int)
+	bigint.SetString(cli_pub_trozo2, 10)
+	cli_pub_key.N = bigint
+
+	//cli_token := make([]byte, 48) // 384 bits (256 bits de clave + 128 bits para el IV)
+	buff := make([]byte, 256)   // contendrá el token cifrado con clave pública (puede ocupar más que el texto en claro)
+	cli_token := randString(32) // generación del token aleatorio para el cliente
+
+	//fmt.Println("token creado ", cli_token)
+
+	// ciframos el token del cliente con la clave pública del otro cliente
+	enctoken, err := rsa.EncryptPKCS1v15(rand.Reader, &cli_pub_key, []byte(cli_token))
+	chk(err)
+
+	//fmt.Println("token cifrado ", string(enctoken)) // Se envia la entrada al servidor
+	enctokenString := strings.Replace(string(enctoken), "\n", "-----n", -1)
+
+	//fmt.Println("token cifrado sin endlines ", enctokenString) // Se envia la entrada al servidor
+	// Falla al encriptar y poner saltos de linea
+	tokenCliente := "Token#&" + esteUsuario + "#&" + usuarioElegido + "#&" + enctokenString
+	fmt.Fprintln(conn, tokenCliente) // Se envia la entrada al servidor
+
+	var tokenRecibido string
+	for netscan.Scan() {
+
+		tokenRecibido = netscan.Text()
+		if strings.HasPrefix(tokenRecibido, "Token:") {
+			//fmt.Println("Token recibido:" + tokenRecibido)
+			break
+		}
+
+	}
+
+	//fmt.Println("Token recibido sin prefijo: " + strings.Split(tokenRecibido, "Token:")[1])
+	//fmt.Println("Token recibido sin prefijo ni endlines: " + strings.Replace(strings.Split(tokenRecibido, "Token:")[1], "-----n", "\n", -1))
+
+	buff = []byte(strings.Replace(strings.Split(tokenRecibido, "Token:")[1], "-----n", "\n", -1))
+
+	// desciframos el token del otro cliente con nuestra clave privada
+	session_key, err := rsa.DecryptPKCS1v15(rand.Reader, cli_keys, buff)
+	chk(err)
+
+	// realizamos el XOR entre ambos tokens (cliente y servidor acaban con la misma clave de sesión)
+	var i int
+	for i = 0; i < len(cli_token); i++ {
+		session_key[i] ^= cli_token[i]
+	}
+
+	return session_key
+}
+
 func verPerfiles(conn net.Conn, nombreUsuario string) {
 	salir := false
 	for !salir {
 		fmt.Println("\n\n-- Perfiles de usuarios --")
-		fmt.Println("-- Usuario: " + nombreUsuario + " --")
-		fmt.Println("Eliga una opción: ")
+		fmt.Println("-- Usuario: " + nombreUsuario + " --\n")
 		fmt.Println("1.- Ver todos los usuarios")
 		fmt.Println("2.- Buscar usuarios")
 		fmt.Println("3.- Volver atrás")
-		fmt.Print("Opción elegida (introduzca el número): ")
+		fmt.Print("Elija una opción: ")
 
 		reader := bufio.NewReader(os.Stdin)
 		opcionElegida, err := reader.ReadString('\n')
@@ -498,7 +618,7 @@ func verTodosPerfiles(conn net.Conn) {
 	//fmt.Println(usuarios)
 
 	// El siguiente paso es elegir el usuario con quien se quiere hablar.
-	fmt.Println("Usuarios:")
+	fmt.Println("\nUsuarios:")
 
 	i := 1
 	if numUsuarios == 0 {
@@ -541,7 +661,7 @@ func buscarUsuarios(conn net.Conn) {
 	numUsuarios := len(usuarios) - 2
 
 	// El siguiente paso es elegir el usuario con quien se quiere hablar.
-	fmt.Println("Usuarios:")
+	fmt.Println("\nUsuarios:")
 
 	i := 1
 	if numUsuarios == 0 {
@@ -554,4 +674,14 @@ func buscarUsuarios(conn net.Conn) {
 			fmt.Println("\nUsuario ", i, "\n", textoAMostrar)
 		}
 	}
+}
+
+func randString(n int) string {
+	const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	var bytes = make([]byte, n)
+	rand.Read(bytes)
+	for i, b := range bytes {
+		bytes[i] = alphanum[b%byte(len(alphanum))]
+	}
+	return string(bytes)
 }

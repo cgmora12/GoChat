@@ -26,6 +26,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"net"
+	//"strconv"
 	"strings"
 )
 
@@ -83,6 +84,14 @@ func server() {
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
 					fmt.Fprintln(conn, "")
 
+					if len(strings.Split(textoRecibido, "#&")[1]) > 0 {
+						//fmt.Println(strconv.Itoa(len(strings.Split(textoRecibido, "#&")[1])))
+						portDestino := usuariosLogueados[strings.Split(textoRecibido, "#&")[1]]
+						connDestino := connUsuariosLogueados[portDestino]
+						fmt.Println("Enviar salir al destino: " + portDestino)
+						fmt.Fprintln(connDestino, "Salir")
+					}
+
 				} else if strings.HasPrefix(textoRecibido, "GetLogueados#&") {
 					// Se envia algo para que el scanner del cliente pueda reaccionar
 					// (si no se envia nada el cliente se quedaría escuchando indefinidamente)
@@ -94,7 +103,8 @@ func server() {
 					}
 					fmt.Fprintln(conn, textoAEnviar)
 
-				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") {
+				} else if strings.HasPrefix(textoRecibido, "SalaPrivada#&") || strings.HasPrefix(textoRecibido, "Clave#&") || strings.HasPrefix(textoRecibido, "Token#&") {
+
 					enviarAlDestino(textoRecibido, usuariosLogueados, connUsuariosLogueados)
 
 				} else if strings.HasPrefix(textoRecibido, "VerTodosPerfiles#&") {
@@ -220,7 +230,7 @@ func procesarLogout(port string, usuariosLogueados map[string]string, connUsuari
 		if value == port {
 			delete(usuariosLogueados, key)
 			delete(connUsuariosLogueados, port)
-			fmt.Println("Logout usuario " + key + "correcto")
+			fmt.Println("Logout usuario " + key + " correcto")
 			break
 		}
 	}
@@ -257,25 +267,72 @@ func buscarUsuarioOrigen(portOrigen string, usuariosLogueados map[string]string)
 }
 
 func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, connUsuariosLogueados map[string]net.Conn) {
-	s := strings.Split(textoRecibido, "#&")
-	usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
+	if strings.HasPrefix(textoRecibido, "Clave#&") {
 
-	portOrigen := usuariosLogueados[usuarioOrigen]
-	connOrigen := connUsuariosLogueados[portOrigen]
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, clavePub := s[1], s[2], s[3]
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
 
-	portDestino := usuariosLogueados[usuarioDestino]
-	connDestino := connUsuariosLogueados[portDestino]
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
 
-	if portDestino == "" {
-		envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
-		fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
-		fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Clave:" + clavePub
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviada clave '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
+
+	} else if strings.HasPrefix(textoRecibido, "Token#&") {
+
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, tokenCli := s[1], s[2], s[3]
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
+
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
+
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Token:" + tokenCli
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviado token '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
 
 	} else {
-		envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
-		fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
-		fmt.Println("Enviado '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+
+		s := strings.Split(textoRecibido, "#&")
+		usuarioOrigen, usuarioDestino, mensajeAEnviar := s[1], s[2], s[3]
+
+		portOrigen := usuariosLogueados[usuarioOrigen]
+		connOrigen := connUsuariosLogueados[portOrigen]
+
+		portDestino := usuariosLogueados[usuarioDestino]
+		connDestino := connUsuariosLogueados[portDestino]
+
+		if portDestino == "" {
+			envioOrigen := "El usuario " + usuarioDestino + " ya no está logueado."
+			fmt.Fprintln(connOrigen, envioOrigen) // Se envia el mensaje de error al origen
+			fmt.Println("Enviado mensaje '" + envioOrigen + "' al usuario " + usuarioOrigen + " mediante el puerto " + portOrigen)
+
+		} else {
+			envioDestino := "Sala privada: " + usuarioOrigen + ": " + mensajeAEnviar
+			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
+			fmt.Println("Enviado '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+		}
+
 	}
+
 }
 
 func devolverTodosPerfiles(conn net.Conn) {
@@ -308,7 +365,20 @@ func devolverTodosPerfiles(conn net.Conn) {
 		valorLocalidad := rows[i].Str(localidad)
 		valorEmail := rows[i].Str(email)
 
-		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "- Nombre completo = " + valorNombreCompleto
+		if len(valorPais) > 0 {
+			textoAEnviar += "- Pais = " + valorPais
+		}
+		if len(valorProvincia) > 0 {
+			textoAEnviar += "- Provincia = " + valorProvincia
+		}
+		if len(valorLocalidad) > 0 {
+			textoAEnviar += "- Localidad = " + valorLocalidad
+		}
+		if len(valorEmail) > 0 {
+			textoAEnviar += "- Email = " + valorEmail
+		}
+		textoAEnviar += "#&"
 	}
 	//fmt.Println(textoAEnviar)
 	fmt.Fprintln(conn, textoAEnviar)
@@ -352,7 +422,20 @@ func buscarUsuarios(conn net.Conn, textoRecibido string) {
 		valorLocalidad := rows[i].Str(localidad)
 		valorEmail := rows[i].Str(email)
 
-		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "-Nombre completo = " + valorNombreCompleto + "-Pais = " + valorPais + "-Provincia = " + valorProvincia + "-Localidad = " + valorLocalidad + "-Email = " + valorEmail + "#&"
+		textoAEnviar += "Nombre usuario = " + valorNombreUsuario + "- Nombre completo = " + valorNombreCompleto
+		if len(valorPais) > 0 {
+			textoAEnviar += "- Pais = " + valorPais
+		}
+		if len(valorProvincia) > 0 {
+			textoAEnviar += "- Provincia = " + valorProvincia
+		}
+		if len(valorLocalidad) > 0 {
+			textoAEnviar += "- Localidad = " + valorLocalidad
+		}
+		if len(valorEmail) > 0 {
+			textoAEnviar += "- Email = " + valorEmail
+		}
+		textoAEnviar += "#&"
 	}
 	//fmt.Println(textoAEnviar)
 	fmt.Fprintln(conn, textoAEnviar)
