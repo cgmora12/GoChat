@@ -1,3 +1,5 @@
+DROP SCHEMA IF EXISTS `gochat` ;
+
 create database gochat;
 
 CREATE TABLE `gochat`.`usuarios` (
