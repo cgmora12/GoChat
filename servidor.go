@@ -291,7 +291,7 @@ func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, 
 		} else {
 			envioDestino := "Clave:" + clavePub
 			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
-			fmt.Println("Enviada clave '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+			fmt.Println("Enviada clave pública al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
 		}
 
 	} else if strings.HasPrefix(textoRecibido, "Token#&") {
@@ -312,7 +312,7 @@ func enviarAlDestino(textoRecibido string, usuariosLogueados map[string]string, 
 		} else {
 			envioDestino := "Token:" + tokenCli
 			fmt.Fprintln(connDestino, envioDestino) // Se envia el mensaje al destino
-			fmt.Println("Enviado token '" + envioDestino + "' al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
+			fmt.Println("Enviado token al usuario " + usuarioDestino + " mediante el puerto " + portDestino)
 		}
 
 	} else {
